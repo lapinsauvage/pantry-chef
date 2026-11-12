@@ -187,6 +187,7 @@ def build(parquet_path: str, csv_path: str, out_path: str, min_reviews: int,
     log(f"  {len(vocab):,} canonical ingredients")
 
     # ---- write database
+    os.makedirs(os.path.dirname(os.path.abspath(out_path)), exist_ok=True)
     if os.path.exists(out_path):
         os.remove(out_path)
     db = sqlite3.connect(out_path)
