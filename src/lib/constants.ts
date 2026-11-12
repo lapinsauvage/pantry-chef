@@ -132,6 +132,14 @@ export const HARD_STAPLES = ['water', 'salt', 'black pepper', 'ice', 'cooking sp
 export const DEFAULT_BASICS = [
   'vegetable oil', 'olive oil', 'sugar', 'flour', 'butter', 'garlic', 'onion', 'egg', 'milk',
 ];
+/** Other common store-cupboard items offered as one-tap additions in the basics editor. */
+export const BASIC_SUGGESTIONS = [
+  'brown sugar', 'powdered sugar', 'baking powder', 'baking soda', 'vanilla extract', 'cornstarch',
+  'yeast', 'rice', 'pasta', 'breadcrumbs', 'margarine', 'parmesan', 'chicken broth', 'tomato paste',
+  'soy sauce', 'vinegar', 'lemon juice', 'honey', 'mustard', 'ketchup', 'mayonnaise',
+  'worcestershire sauce', 'cinnamon', 'paprika', 'oregano', 'basil', 'thyme', 'cumin', 'nutmeg',
+  'garlic powder', 'chili flakes', 'cayenne pepper',
+];
 
 /** Time presets for the "how much time do you have?" picker (minutes; null = any). */
 export const TIME_PRESETS = [15, 30, 45, 60, 90, null] as const;

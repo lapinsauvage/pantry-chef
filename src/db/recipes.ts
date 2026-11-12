@@ -1,7 +1,7 @@
 /**
  * Read-only queries against the bundled recipe database (assets/db/recipes.db).
  * Schema: see docs/DATA.md. All functions take an expo-sqlite database handle,
- * e.g. from `useSQLiteContext()` under <SQLiteProvider> (set up in src/app/_layout.tsx).
+ * from `useRecipeDb()` (src/db/recipe-db.ts; suspends until the first-launch import is done).
  */
 import type { SQLiteBindValue, SQLiteDatabase } from 'expo-sqlite';
 
@@ -265,6 +265,25 @@ export async function popularIngredients(db: SQLiteDatabase, category?: string, 
      WHERE staple = 0 ${category ? 'AND category = ?' : ''}
      ORDER BY recipes DESC LIMIT ?`,
     category ? [category, limit] : [limit],
+  );
+}
+
+/** Ingredients by canonical English name (unknown names are skipped), in the order of `names`. */
+export async function ingredientsByName(db: SQLiteDatabase, names: readonly string[]): Promise<Ingredient[]> {
+  if (!names.length) return [];
+  const rows = await db.getAllAsync<Ingredient>(
+    `SELECT id, name, name_fr, category, recipes, avoid FROM ingredients WHERE name IN (${placeholders(names.length)})`,
+    [...names],
+  );
+  const byName = new Map(rows.map((r) => [r.name, r]));
+  return names.map((n) => byName.get(n)).filter((r): r is Ingredient => r != null);
+}
+
+export async function ingredientsByIds(db: SQLiteDatabase, ids: readonly number[]): Promise<Ingredient[]> {
+  if (!ids.length) return [];
+  return db.getAllAsync<Ingredient>(
+    `SELECT id, name, name_fr, category, recipes, avoid FROM ingredients WHERE id IN (${placeholders(ids.length)})`,
+    [...ids],
   );
 }
 

@@ -41,7 +41,16 @@
           "enableFTS": true
         }
       ],
-      "expo-localization"
+      [
+        "expo-localization",
+        {
+          "supportedLocales": [
+            "en",
+            "fr"
+          ],
+          "supportsRTL": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

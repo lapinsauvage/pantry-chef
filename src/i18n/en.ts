@@ -1,0 +1,107 @@
+/**
+ * English UI strings. src/i18n/fr.ts must have exactly the same shape (enforced by the
+ * `Translations` type and src/lib/__tests__/i18n.test.ts). Strings that depend on a value
+ * are functions so each language can handle its own grammar (plurals, word order).
+ * Labels of codes shared with the data pipeline (appliances, diets, courses…) live in
+ * src/lib/constants.ts.
+ */
+export const en = {
+  common: {
+    appName: 'Pantry Chef',
+    next: 'Next',
+    back: 'Back',
+    skip: 'Skip',
+    cancel: 'Cancel',
+    retry: 'Try again',
+    none: 'None',
+    settings: 'Settings',
+    selected: 'Selected',
+    preparingTitle: 'Preparing recipes…',
+    preparingBody: 'Setting up the recipe library on your phone. This only happens once.',
+    errorTitle: 'Something went wrong',
+    errorBody: 'The recipe library could not be opened.',
+  },
+  tabs: {
+    cook: 'Cook',
+    browse: 'Browse',
+    favorites: 'Favourites',
+    shopping: 'Shopping',
+  },
+  cook: {
+    title: 'What can I cook?',
+    recipesReady: (n: string) => `${n} recipes on your phone, ready offline.`,
+    comingSoon: 'Pick the ingredients you have and see what you can make — coming in the next update.',
+    kitchenTitle: 'Your kitchen',
+    basicsCount: (n: number) => (n === 1 ? '1 basic ingredient' : `${n} basic ingredients`),
+    editKitchen: 'Edit in Settings',
+  },
+  browse: {
+    title: 'Browse',
+    comingSoon: 'Search recipes and browse by course, cuisine and collection — coming soon.',
+  },
+  favorites: {
+    title: 'Favourites',
+    comingSoon: 'Recipes you save with ♥ and the ones you viewed recently will appear here.',
+  },
+  shopping: {
+    title: 'Shopping list',
+    comingSoon: 'Missing ingredients from recipes and your own items will appear here.',
+  },
+  onboarding: {
+    stepOf: (step: number, total: number) => `Step ${step} of ${total}`,
+    languageTitle: 'Welcome to Pantry Chef',
+    languageHint: 'Tell us what you have and we’ll show you what you can cook. First, which language do you prefer?',
+    appliancesTitle: 'Your appliances',
+    appliancesHint: 'We only suggest recipes you can make with what you have.',
+    basicsTitle: 'Basics you always have',
+    basicsHint: 'These count as available in every search. Salt, pepper and water are always assumed.',
+    dietTitle: 'Diet and things to avoid',
+    dietHint: 'Optional — you can change this any time in Settings.',
+    finish: 'Start cooking',
+  },
+  settings: {
+    title: 'Settings',
+    language: 'Language',
+    languageSystem: (current: string) => `System default (${current})`,
+    languageNames: { en: 'English', fr: 'Français' },
+    units: 'Units',
+    unitsMetric: 'Metric (g, ml, °C)',
+    unitsUs: 'US (cups, oz, °F)',
+    unitsHint: 'Spoons stay spoons in both.',
+    kitchen: 'My kitchen',
+    appliances: 'Appliances',
+    appliancesHint: 'Recipes that need an appliance you don’t have are hidden.',
+    basics: 'Basics I always have',
+    basicsHint: 'Counted as available in every search. Salt, pepper and water are always assumed.',
+    basicsCount: (n: number) => (n === 0 ? 'None' : n === 1 ? '1 ingredient' : `${n} ingredients`),
+    yourBasics: 'Your basics',
+    noBasics: 'No basics yet — add some below.',
+    suggestions: 'Suggestions',
+    searchIngredient: 'Search an ingredient…',
+    noMatch: 'No matching ingredient.',
+    addIngredient: (name: string) => `Add ${name}`,
+    removeIngredient: (name: string) => `Remove ${name}`,
+    dietAndAvoid: 'Diet & allergies',
+    diet: 'Diet',
+    dietHint: 'Only show recipes that match every selected diet.',
+    avoid: 'Avoid',
+    avoidHint: 'Hide recipes that contain any of these.',
+    avoidSummary: (list: string) => `Avoid: ${list}`,
+    dietDisclaimer: 'Diet and allergen labels are estimated from ingredient names. Always check the recipe.',
+    data: 'Recipe data',
+    dataRecipes: 'Recipes',
+    dataIngredients: 'Ingredients',
+    dataVersion: 'Data version',
+    dataBuilt: 'Built on',
+    about: 'About',
+    appVersion: 'App version',
+    attribution: 'Recipes and photos from Food.com, for personal use. Each recipe links to its page and author.',
+    reset: 'Reset app data',
+    resetTitle: 'Reset app data?',
+    resetBody:
+      'This deletes your settings, basics, pantry, favourites, history and shopping list. The recipes stay on your phone.',
+    resetConfirm: 'Reset',
+  },
+};
+
+export type Translations = typeof en;
