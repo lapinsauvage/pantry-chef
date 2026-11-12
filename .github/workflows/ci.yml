@@ -1,0 +1,43 @@
+# Fast checks on every push / pull request (Linux only, no app build).
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+    tags-ignore: ["**"]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: App unit tests
+        run: npm test
+      - name: Data pipeline tests
+        run: |
+          pip install -r data-pipeline/requirements.txt
+          cd data-pipeline && python -m pytest -q tests
+      - name: Sample database is valid
+        run: |
+          python - <<'EOF'
+          import sqlite3
+          db = sqlite3.connect("assets/db/recipes.db")
+          n = db.execute("select count(*) from recipes").fetchone()[0]
+          assert n > 1000, n
+          assert db.execute("select count(*) from recipe_fts where recipe_fts match 'chicken'").fetchone()[0] > 0
+          print("sample db ok:", n, "recipes")
+          EOF

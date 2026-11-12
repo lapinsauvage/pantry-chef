@@ -1,0 +1,210 @@
+# Builds the full recipe database, then an installable Android APK and an
+# unsigned iOS IPA (for Sideloadly / AltStore), and attaches them to a GitHub Release.
+#
+# Run it from the GitHub website: Actions → "Build apps" → Run workflow.
+# Downloads appear under Releases (tag "latest" unless you pushed a v* tag).
+name: Build apps
+
+on:
+  workflow_dispatch:
+    inputs:
+      platforms:
+        description: Which apps to build
+        type: choice
+        options: [both, android, ios]
+        default: both
+      min_reviews:
+        description: "Recipe quality filter: minimum reviews (3 ≈ 107k recipes / 223 MB, 5 ≈ 63k / ~130 MB)"
+        type: string
+        default: "3"
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-apps-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  MIN_REVIEWS: ${{ inputs.min_reviews || '3' }}
+  PLATFORMS: ${{ inputs.platforms || 'both' }}
+
+jobs:
+  database:
+    name: Recipe database
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Cache key
+        id: key
+        run: echo "key=recipes-db-${{ hashFiles('data-pipeline/pantry_pipeline/**', 'data-pipeline/scripts/**') }}-r${MIN_REVIEWS}" >> "$GITHUB_OUTPUT"
+
+      - name: Restore database from cache
+        id: cache
+        uses: actions/cache@v6
+        with:
+          path: build/recipes.db
+          key: ${{ steps.key.outputs.key }}
+
+      - if: steps.cache.outputs.cache-hit != 'true'
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Download sources and build database
+        if: steps.cache.outputs.cache-hit != 'true'
+        env:
+          KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
+        run: |
+          pip install -r data-pipeline/requirements.txt
+          (cd data-pipeline && python -m pytest -q tests)
+          bash data-pipeline/scripts/fetch_sources.sh data-raw
+          cd data-pipeline
+          python -m pantry_pipeline.build_db \
+            --parquet ../data-raw/recipes.parquet \
+            --csv ../data-raw/recipes_w_search_terms.csv \
+            --out ../build/recipes.db \
+            --min-reviews "$MIN_REVIEWS" \
+            --meta-json ../build/meta.json
+
+      - name: Database version
+        id: meta
+        run: |
+          echo "version=$(sha256sum build/recipes.db | cut -c1-12)" >> "$GITHUB_OUTPUT"
+          ls -la build/
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: recipes-db
+          path: build/recipes.db
+          retention-days: 1
+          compression-level: 6
+
+  android:
+    name: Android APK
+    needs: database
+    if: ${{ inputs.platforms != 'ios' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+      - uses: actions/download-artifact@v8
+        with:
+          name: recipes-db
+          path: build
+      - name: Use the full database
+        run: bash scripts/use-full-db.sh build/recipes.db "${{ needs.database.outputs.version }}"
+      - run: npm ci
+      - name: Generate native project
+        run: npx expo prebuild --platform android --no-install
+      - name: Gradle assembleRelease
+        working-directory: android
+        run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,armeabi-v7a
+      - name: Rename APK
+        run: |
+          mkdir -p dist
+          cp android/app/build/outputs/apk/release/app-release.apk "dist/PantryChef-${{ needs.database.outputs.version }}.apk"
+          ls -la dist
+      - uses: actions/upload-artifact@v7
+        with:
+          name: android-apk
+          path: dist/*.apk
+          retention-days: 3
+          compression-level: 0
+
+  ios:
+    name: iOS IPA (unsigned)
+    needs: database
+    if: ${{ inputs.platforms != 'android' }}
+    # macOS minutes count 10x against the free allowance of private repos (see docs/BUILD.md).
+    # If this runner label is unavailable, use macos-15.
+    runs-on: macos-26
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/download-artifact@v8
+        with:
+          name: recipes-db
+          path: build
+      - name: Use the full database
+        run: bash scripts/use-full-db.sh build/recipes.db "${{ needs.database.outputs.version }}"
+      - run: npm ci
+      - name: Generate native project (runs pod install)
+        run: npx expo prebuild --platform ios
+      - name: Archive without code signing
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -workspace ios/PantryChef.xcworkspace \
+            -scheme PantryChef \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/PantryChef.xcarchive" \
+            CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO \
+            archive | tail -n 80
+      - name: Package unsigned .ipa
+        run: |
+          mkdir -p "$RUNNER_TEMP/ipa/Payload" dist
+          cp -R "$RUNNER_TEMP/PantryChef.xcarchive/Products/Applications/PantryChef.app" "$RUNNER_TEMP/ipa/Payload/"
+          (cd "$RUNNER_TEMP/ipa" && zip -qry "$GITHUB_WORKSPACE/dist/PantryChef-${{ needs.database.outputs.version }}-unsigned.ipa" Payload)
+          ls -la dist
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ios-ipa
+          path: dist/*.ipa
+          retention-days: 3
+          compression-level: 0
+
+  release:
+    name: Publish release
+    needs: [database, android, ios]
+    if: ${{ always() && needs.database.result == 'success' && (needs.android.result == 'success' || needs.ios.result == 'success') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: "*-{apk,ipa}"
+          path: dist
+          merge-multiple: true
+      - name: Create or update release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ls -la dist
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then TAG="${GITHUB_REF#refs/tags/}"; else TAG=latest; fi
+          NOTES="Built $(date -u +%Y-%m-%d) from ${GITHUB_SHA::7} · recipe database ${{ needs.database.outputs.version }} (min reviews ${MIN_REVIEWS}).
+          Android: download the .apk on your phone and open it.
+          iPhone: sideload the -unsigned.ipa with Sideloadly or AltStore (see docs/BUILD.md)."
+          if [[ "$TAG" == latest ]]; then
+            # keep the moving "latest" tag on the commit that was just built
+            git tag -f latest "$GITHUB_SHA" && git push -f origin refs/tags/latest
+          fi
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" --notes "$NOTES"
+            # remove previous builds so the release only holds the newest files
+            for a in $(gh release view "$TAG" --json assets -q '.assets[].name'); do gh release delete-asset "$TAG" "$a" -y; done
+          else
+            gh release create "$TAG" --title "Pantry Chef ($TAG)" --notes "$NOTES" --verify-tag
+          fi
+          gh release upload "$TAG" dist/* --clobber
