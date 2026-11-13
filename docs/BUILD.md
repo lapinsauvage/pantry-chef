@@ -29,8 +29,8 @@ package in `node_modules/expo/bundledNativeModules.json` with `npm install <pkg>
 ### Quick tryout with French recipes (database = sample)
 **Run workflow** with *platforms* `android` and *database* `sample`: the APK uses the committed
 2,500 most popular recipes, whose names, ingredient lines and steps are machine-translated to
-French (`.github/workflows/translate.yml`, see docs/TRANSLATOR.md). About 20 Linux minutes, a
-~35 MB APK, published under the separate pre-release **tryout** — the `latest` full builds stay.
+French (`.github/workflows/translate.yml`, see docs/TRANSLATOR.md). About 15 Linux minutes, a
+55 MB APK (9 MB of recipes), published under the separate pre-release **tryout** — the `latest` full builds stay.
 Installing it over the full app keeps your settings and lists; favourites that aren't among the
 2,500 stay hidden until the full app is installed again.
 
