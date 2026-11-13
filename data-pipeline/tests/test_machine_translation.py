@@ -38,8 +38,10 @@ def test_prepare_names_caps_and_pre_rules():
     assert mt.prepare("name", "Best Ever Banana Bread", G) == "Best ever banana bread"
     assert mt.prepare("name", "Grandma's BBQ Ribs", G) == "Grandma's bbq ribs"
     assert mt.prepare("name", "Chicken and rice", G) == "Chicken and rice"  # already sentence case
-    assert mt.prepare("step", "Cook on LOW for 8 hours.  ENJOY!", G) == "Cook on low for 8 hours. enjoy!"
+    assert mt.prepare("step", "Cook on LOW for 8 hours.  ENJOY!", G) == "Cook on low for 8 hours. Enjoy!"
     assert mt.prepare("step", "Put everything in a Crock-Pot.", G) == "Put everything in a slow cooker."
+    assert mt.prepare("step", "CAREFUL! IT WILL SPUTTER.", G) == "Careful! It will sputter."
+    assert mt.prepare("step", "Use a 23–25 cm pan; bake at 95—105°C.", G) == "Use a 23 to 25 cm pan; bake at 95 to 105°C."
 
 
 def test_finish_belgian_words_and_typography():
@@ -59,12 +61,23 @@ def test_finish_belgian_words_and_typography():
     assert mt.finish("step", "Note: serve hot.", "Remarque : servir chaud.", G) == "Remarque : servir chaud."
     assert mt.finish("step", "Bake 1:30.", "Cuire 1:30.", G) == "Cuire 1:30."
     assert mt.finish("name", "Easy pie", "tarte facile", G) == "Tarte facile"
+    assert mt.finish("step", "Add the chili powder.", "Ajouter la poudre de chili.", G) == "Ajouter le chili en poudre."
+    assert mt.finish("ingredient", "lime juice", "jus de lime", G) == "jus de citron vert"
+    assert mt.finish("step", "Turn the drumsticks.", "Retourner les baguettes.", G) == "Retourner les pilons."
+    assert mt.finish("step", "Slice the baguettes.", "Trancher les baguettes.", G) == "Trancher les baguettes."
+    assert mt.finish("step", "Mix flour and soda.", "Mélanger la farine et le soda.", G) == "Mélanger la farine et le bicarbonate."
+    assert mt.finish("ingredient", "sweet potatoes", "patates douces", G) == "patates douces"
+    assert mt.finish("ingredient", "potatoes", "patates", G) == "pommes de terre"
 
 
 def test_check_flags_bad_output():
     assert mt.check("Bake 25 minutes at 180 °C.", "Cuire 25 minutes à 180 °C.") is None
     assert mt.check("Cut 2.5 cm pieces.", "Couper des morceaux de 2,5 cm.") is None
     assert mt.check("Bake 25 minutes.", "Cuire 35 minutes.") == "numbers"
+    assert mt.check("Simmer 1 1/2 hours.", "Laisser mijoter 1 heure et demie.") is None
+    assert mt.check("Add 1/2 cup milk.", "Ajouter 1/2 tasse de lait.") is None
+    assert mt.check("Chill for 1/2 hour.", "Réfrigérer une demi-heure.") is None
+    assert mt.check("Use a 23 to 25 cm pan.", "Utiliser un moule de 2325 cm.") == "numbers"
     assert mt.check("Bake 25 minutes.", "") == "empty"
     assert mt.check("Stir the sauce well and serve it hot.", "Remuer.") == "length"
     assert mt.check("Stir well.", "remuer la sauce remuer la sauce remuer la sauce remuer la sauce") == "loop"

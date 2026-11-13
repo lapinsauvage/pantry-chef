@@ -96,6 +96,23 @@ def _replace(rule: Rule, text: str) -> str:
 
 _CAPS = re.compile(r"\b[A-Z]{3,}\b")
 _SPACES = re.compile(r"\s+")
+_RANGE = re.compile(r"(?<=\d)\s*[–—]\s*(?=\d)")  # the model drops the dash: "23–25 cm" -> "2325 cm"
+
+
+_CAPS_RUN = re.compile(r"\b[A-Z]{2,}(?:['’][A-Z]+)?(?:[\s,;:!?.-]+[A-Z]{2,}(?:['’][A-Z]+)?)+\b")
+_SENTENCE_START = re.compile(r"(?:^|[.!?:]\s+)(\w)")
+
+
+def _lower_caps(text: str) -> str:
+    """'CAREFUL! IT WILL SPUTTER.' -> 'Careful! It will sputter.' (words in capitals stay English)."""
+    out = _CAPS_RUN.sub(lambda m: m.group(0).lower(), text)
+    out = _CAPS.sub(lambda m: m.group(0).lower(), out)
+    chars = list(out)
+    for m in _SENTENCE_START.finditer(text):  # keep the capital that starts a sentence
+        i = m.start(1)
+        if text[i].isupper():
+            chars[i] = chars[i].upper()
+    return "".join(chars)
 
 
 def sentence_case(name: str) -> str:
@@ -111,7 +128,8 @@ def sentence_case(name: str) -> str:
 def prepare(kind: str, en: str, glossary: Glossary) -> str:
     """The English text actually sent to the model."""
     text = _SPACES.sub(" ", en).strip()
-    text = _CAPS.sub(lambda m: m.group(0).lower(), text)  # "ENJOY!" -> "enjoy!", "on LOW" -> "on low"
+    text = _RANGE.sub(" to ", text)
+    text = _lower_caps(text)  # "ENJOY!" -> "Enjoy!", "on LOW" -> "on low"
     if kind == "name":
         text = sentence_case(text)
     for rule in glossary.pre:
@@ -158,8 +176,20 @@ ENGLISH_ONLY = frozenset(
     "mixture".split())
 
 
+_FRACTION = re.compile(r"(?:(\d+)[\s-]+)?(\d+)/(\d+)")
+_AND_HALF = re.compile(r"(\d+)\s+(?:[^\W\d]+\.?\s+){0,2}et\s+demie?\b", re.IGNORECASE)
+_HALF = re.compile(r"\b(?:une?\s+)?demi-", re.IGNORECASE)
+
+
 def numbers(text: str) -> list[str]:
-    return sorted(n.replace(",", ".") for n in _NUMBER.findall(text))
+    """The numbers of a text, comparable across languages: 1 1/2 = 1,5 = "1 heure et demie"."""
+    def frac(m: re.Match) -> str:
+        whole, a, b = int(m.group(1) or 0), int(m.group(2)), int(m.group(3))
+        return f"{whole + a / b:g}" if b else m.group(0)
+    text = _FRACTION.sub(frac, text)
+    text = _AND_HALF.sub(lambda m: f"{int(m.group(1)) + 0.5:g}", text)
+    text = _HALF.sub("0.5 ", text)
+    return sorted(f"{float(n.replace(',', '.')):g}" for n in _NUMBER.findall(text))
 
 
 def _max_trigram(words: list[str]) -> int:

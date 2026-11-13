@@ -1,9 +1,10 @@
 {
-  "version": 1,
+  "version": 2,
   "about": "EN→FR fixes for machine translation (docs/TRANSLATOR.md). pre: English rewritten before the model. post: French output rewritten in order (case-insensitive, first-letter case kept; put 'le/du/un …' variants before the bare word when the gender changes); 'en' = only when the English text matches. Bump version after a change.",
   "pre": [
     {"en": "\\bcrock[- ]?pots?\\b", "to": "slow cooker"},
-    {"en": "\\bbite[- ]sized?\\b", "to": "small"}
+    {"en": "\\bbite[- ]sized?\\b", "to": "small"},
+    {"en": "\\bpot ?stickers?\\b", "to": "gyoza"}
   ],
   "post": [
     {"fr": "\\bcrème sure\\b", "to": "crème aigre"},
@@ -51,6 +52,34 @@
     {"fr": "\\bune échalote verte\\b", "to": "un oignon de printemps"},
     {"fr": "\\béchalote verte\\b", "to": "oignon de printemps"},
     {"fr": "\\béchalotes vertes\\b", "to": "oignons de printemps"},
-    {"fr": "\\bsur la cuisinière\\b", "to": "sur le feu", "en": "\\bstove(?:top)?\\b"}
+    {"fr": "\\bsur la cuisinière\\b", "to": "sur le feu", "en": "\\bstove(?:top)?\\b"},
+    {"fr": "\\b(farine(?: [\\wéèêàâîôûç]+)?) tout[- ]usage\\b", "to": "\\1"},
+    {"fr": "\\bc\\. à table\\b", "to": "c. à soupe"},
+    {"fr": "\\bc\\. à thé\\b", "to": "c. à café"},
+    {"fr": "\\bbleuets\\b", "to": "myrtilles"},
+    {"fr": "\\bbleuet\\b", "to": "myrtille"},
+    {"fr": "\\bpacanes?\\b", "to": "noix de pécan"},
+    {"fr": "\\bbeurre d['’]arachides?\\b", "to": "beurre de cacahuète"},
+    {"fr": "\\barachides\\b", "to": "cacahuètes"},
+    {"fr": "\\bpatates\\b(?! douces)", "to": "pommes de terre"},
+    {"fr": "\\bpatate\\b(?! douce)", "to": "pomme de terre"},
+    {"fr": "\\bfromage cottage\\b", "to": "cottage cheese"},
+    {"fr": "\\briz brun\\b", "to": "riz complet"},
+    {"fr": "\\bde la poudre de chili\\b", "to": "du chili en poudre"},
+    {"fr": "\\bla poudre de chili\\b", "to": "le chili en poudre"},
+    {"fr": "\\bpoudre de chili\\b", "to": "chili en poudre"},
+    {"fr": "\\bcrème épaisse\\b", "to": "crème entière", "en": "\\bheavy (?:whipping )?cream\\b|\\bwhipping cream\\b"},
+    {"fr": "\\bjus de limes?\\b", "to": "jus de citron vert"},
+    {"fr": "\\bzeste de limes?\\b", "to": "zeste de citron vert"},
+    {"fr": "\\bde la lime\\b", "to": "du citron vert"},
+    {"fr": "\\bla lime\\b", "to": "le citron vert"},
+    {"fr": "\\bune lime\\b", "to": "un citron vert"},
+    {"fr": "\\blimes\\b", "to": "citrons verts"},
+    {"fr": "\\blime\\b", "to": "citron vert"},
+    {"fr": "\\bune baguette\\b", "to": "un pilon", "en": "\\bdrumsticks?\\b"},
+    {"fr": "\\bbaguettes\\b", "to": "pilons", "en": "\\bdrumsticks\\b"},
+    {"fr": "\\bbaguette\\b", "to": "pilon", "en": "\\bdrumstick\\b"},
+    {"fr": "\\b(le|du) soda\\b", "to": "\\1 bicarbonate", "en": "\\bbaking soda\\b|\\bsoda\\b.*\\bflour\\b|\\bflour\\b.*\\bsoda\\b"},
+    {"fr": "\\bsoda\\b(?! irlandais)", "to": "bicarbonate", "en": "\\bbaking soda\\b|\\bsoda\\b.*\\bflour\\b|\\bflour\\b.*\\bsoda\\b"}
   ]
 }
