@@ -38,6 +38,8 @@ milestone), `docs/DATA.md` (database schema and codes), `docs/BUILD.md` (builds,
   Android cache copy deleted after import, `PRAGMA mmap_size`, 300 px list thumbnails, per-route
   error screens. Remaining: build with "Build apps" and test on both phones (checklist in
   docs/BUILD.md), then fix what the phones show.
+- **Next: French recipes.** A free self-hosted EN↔FR translator (Opus-MT on GitHub Actions) is specified
+  in `docs/TRANSLATOR.md`, not built yet. The speed/quality test is `.github/workflows/translate-test.yml`.
 
 ## Map
 ```
