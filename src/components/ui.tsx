@@ -11,6 +11,7 @@ import {
   type StyleProp,
   StyleSheet,
   Text,
+  TextInput,
   type TextProps,
   View,
   type ViewStyle,
@@ -279,6 +280,68 @@ export function Stepper({
   );
 }
 
+/** Search input with icon and clear button (iOS); `label` is also the placeholder. */
+export function SearchField({
+  value,
+  onChangeText,
+  label,
+  autoFocus,
+}: {
+  value: string;
+  onChangeText: (text: string) => void;
+  label: string;
+  autoFocus?: boolean;
+}) {
+  const colors = useColors();
+  return (
+    <View style={[styles.search, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+      <Icon name="search" size={18} color={colors.textMuted} />
+      <TextInput
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={label}
+        placeholderTextColor={colors.textMuted}
+        accessibilityLabel={label}
+        autoCapitalize="none"
+        autoCorrect={false}
+        autoFocus={autoFocus}
+        returnKeyType="search"
+        clearButtonMode="while-editing"
+        style={[styles.searchInput, { color: colors.text }]}
+      />
+      {value && Platform.OS !== 'ios' ? (
+        <Pressable accessibilityRole="button" accessibilityLabel="✕" onPress={() => onChangeText('')} hitSlop={10}>
+          <Icon name="close" size={18} color={colors.textMuted} />
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
+/** Square-ish tile for the Browse grid (emoji + label). */
+export function Tile({ emoji, label, onPress }: { emoji: string; label: string; onPress: () => void }) {
+  const colors = useColors();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      android_ripple={{ color: colors.border }}
+      style={(state) => [styles.tile, { backgroundColor: colors.surface }, pressedStyle(state)]}>
+      <Text style={styles.tileEmoji} allowFontScaling={false} importantForAccessibility="no">
+        {emoji}
+      </Text>
+      <AppText variant="label" style={styles.flexShrink}>
+        {label}
+      </AppText>
+    </Pressable>
+  );
+}
+
+export function TileGrid({ children }: { children: ReactNode }) {
+  return <View style={styles.tileGrid}>{children}</View>;
+}
+
 export function ChipGroup({ children }: { children: ReactNode }) {
   return <View style={styles.chipGroup}>{children}</View>;
 }
@@ -325,6 +388,31 @@ const styles = StyleSheet.create({
   chipLabel: { flexShrink: 1 },
   chipGroup: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   tag: { borderRadius: radius.pill, paddingHorizontal: space.md, paddingVertical: space.xs },
+  search: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    minHeight: TOUCH,
+    paddingHorizontal: space.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+  },
+  searchInput: { flex: 1, ...typography.body, paddingVertical: space.sm },
+  tileGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
+  tile: {
+    flexGrow: 1,
+    flexBasis: '45%',
+    minHeight: 56,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm,
+    borderRadius: radius.md,
+    overflow: 'hidden',
+  },
+  tileEmoji: { fontSize: 24 },
+  flexShrink: { flexShrink: 1 },
   stepper: { flexDirection: 'row', alignItems: 'center', gap: space.md },
   stepperButton: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   stepperLabel: { minWidth: 110, textAlign: 'center' },

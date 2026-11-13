@@ -13,7 +13,7 @@ import { radius, space, useColors } from '@/theme';
 import { Icon } from './icon';
 import { AppText } from './ui';
 
-const COURSE_EMOJI: Record<string, string> = {
+export const COURSE_EMOJI: Record<string, string> = {
   main: '🍲', side: '🥔', soup: '🥣', salad: '🥗', breakfast: '🍳', dessert: '🍰',
   baking: '🥖', snack: '🥨', sauce: '🫙', drink: '🍹', other: '🍴',
 };

@@ -2,6 +2,7 @@ import { recipeDb } from '@/db/recipe-db';
 import { resetUserData } from '@/db/user';
 
 import { basicsStore, seedDefaultBasics } from './basics';
+import { browseStore } from './browse';
 import { cookStore } from './cook';
 import { favoritesStore } from './favorites';
 import { pantryStore } from './pantry';
@@ -14,6 +15,7 @@ export async function resetAppData(): Promise<void> {
   pantryStore.reload();
   favoritesStore.reload();
   cookStore.reload();
+  browseStore.reload();
   try {
     await seedDefaultBasics(await recipeDb());
   } finally {

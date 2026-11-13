@@ -5,18 +5,17 @@
  */
 import { useHeaderHeight } from 'expo-router/react-navigation';
 import { Suspense, useEffect, useState } from 'react';
-import { KeyboardAvoidingView, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, ScrollView, StyleSheet, View } from 'react-native';
 
-import { Icon } from '@/components/icon';
 import { PreparingRecipes } from '@/components/states';
-import { AppText, Chip, ChipGroup, ChoiceRow, Section } from '@/components/ui';
+import { AppText, Chip, ChipGroup, ChoiceRow, SearchField, Section } from '@/components/ui';
 import { useRecipeDb } from '@/db/recipe-db';
 import { type Ingredient, popularIngredients, searchIngredients } from '@/db/recipes';
 import { ingredientName, useI18n } from '@/i18n';
 import { INGREDIENT_CATEGORIES } from '@/lib/constants';
 import { useBasics } from '@/state/basics';
 import { togglePantryIngredient, usePantry } from '@/state/pantry';
-import { radius, space, TOUCH, typography, useColors } from '@/theme';
+import { space } from '@/theme';
 
 export default function PantryPicker() {
   return (
@@ -31,7 +30,6 @@ export default function PantryPicker() {
 function Picker() {
   const db = useRecipeDb();
   const { t, lang } = useI18n();
-  const colors = useColors();
   const pantry = usePantry();
   const basics = useBasics();
   const [query, setQuery] = useState('');
@@ -69,21 +67,7 @@ function Picker() {
   return (
     <View style={styles.flex}>
       <View style={styles.top}>
-        <View style={[styles.search, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Icon name="search" size={18} color={colors.textMuted} />
-          <TextInput
-            value={query}
-            onChangeText={setQuery}
-            placeholder={t.picker.search}
-            placeholderTextColor={colors.textMuted}
-            accessibilityLabel={t.picker.search}
-            autoCapitalize="none"
-            autoCorrect={false}
-            returnKeyType="search"
-            clearButtonMode="while-editing"
-            style={[styles.input, { color: colors.text }]}
-          />
-        </View>
+        <SearchField value={query} onChangeText={setQuery} label={t.picker.search} />
         <AppText variant="caption" muted accessibilityLiveRegion="polite">
           {t.picker.selectedCount(pantry.length)}
         </AppText>
@@ -138,16 +122,6 @@ function Picker() {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   top: { gap: space.sm, paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: space.sm },
-  search: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.sm,
-    minHeight: TOUCH,
-    paddingHorizontal: space.md,
-    borderRadius: radius.md,
-    borderWidth: 1,
-  },
-  input: { flex: 1, ...typography.body, paddingVertical: space.sm },
   content: { padding: space.lg, paddingTop: space.sm, gap: space.xl, width: '100%', maxWidth: 720, alignSelf: 'center' },
   group: { gap: space.sm },
 });

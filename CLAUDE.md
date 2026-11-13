@@ -22,19 +22,26 @@ milestone), `docs/DATA.md` (database schema and codes), `docs/BUILD.md` (builds,
   filter sheet `/filters` overriding Settings, debounced paged `findByPantry` results with
   "missing: …" names), ingredient picker `/pantry`, Recipe screen `recipe/[id]` (servings scaling,
   metric/US, ✓ owned lines, missing → shopping list, steps via `metricizeText`, nutrition,
-  favourite, Food.com link, history). "Start cooking" (M4) not added yet. **Next: M3** (Browse).
+  favourite, Food.com link, history). "Start cooking" (M4) not added yet.
+- **M3 done:** Browse tab: search as you type (FTS; French ingredient words also match their
+  English names: "poulet riz" → chicken rice), collections / courses / cuisines → `browse/list`,
+  sort (best match / popular / quickest / best rated), filter sheet `/filters?scope=browse`
+  (time, difficulty, cuisine, photo only, appliances, diet, avoid; AND-combined with the preset
+  by `browseFilters`). **Next: M4** (favourites + history, shopping list, cooking mode).
 
 ## Map
 ```
 src/app/            routes only (Expo Router): _layout (guard), onboarding, settings/*, (tabs)/<tab>/{_layout,index},
-                    recipe/[id], pantry (picker modal), filters (Cook filter modal)
+                    recipe/[id], pantry (picker modal), filters (filter modal; ?scope=browse), browse/list
 src/components/     ui.tsx (Text, Button, Section, rows, Chip), kitchen.tsx (editors shared by
                     onboarding + settings), navigation.tsx (TabStack, header options), states.tsx, icon.tsx,
-                    recipe-card.tsx (RecipeRow list item, RecipePhoto with course placeholder)
-src/hooks/          use-ingredient-names.ts (French names for pantry/basics)
+                    recipe-card.tsx (RecipeRow list item, RecipePhoto with course placeholder),
+                    recipe-results.tsx (Browse results: sort chips, filters badge, paging)
+src/hooks/          use-ingredient-names.ts (French names for pantry/basics), use-paged-query.ts
+                    (debounced first page, infinite scroll, stale responses dropped — Cook + Browse)
 src/i18n/           en.ts + fr.ts (typed dictionaries) · index.tsx (useI18n → { t, lang })
-src/state/          settings.ts (useSettings/updateSettings), basics.ts, pantry.ts, favorites.ts, cook.ts
-                    (Cook tab options, in memory), reset.ts — small stores over user.db
+src/state/          settings.ts (useSettings/updateSettings), basics.ts, pantry.ts, favorites.ts, cook.ts /
+                    browse.ts (tab options, in memory), reset.ts — small stores over user.db
 src/theme/          palette (light/dark), useColors, spacing, typography
 src/db/recipe-db.ts first-launch import of recipes.db; useRecipeDb() suspends until ready
 src/db/recipes.ts   ALL reads of recipes.db (findByPantry, browse, search, getRecipe, searchIngredients…)
@@ -44,6 +51,7 @@ src/lib/units.ts    formatIngredient, convertQuantity, metricizeText (°F→°C)
 src/lib/constants.ts     EQUIPMENT/DIETS/AVOID bits, COURSES, CUISINES, categories, labels EN/FR
 src/lib/settings.ts      Settings type, defaults, parse/serialize, resolveLanguage (pure, tested)
 src/lib/cook.ts          course groups, cookFilters, queryKey, missingIds, lineStatus (pure, tested)
+src/lib/browse.ts        COLLECTIONS, presetFor, browseFilters (preset ∧ sheet ∧ Settings), sorts (pure, tested)
 src/lib/format.ts        formatNumber / formatDate / formatMinutes (EN/FR)
 assets/db/recipes.db     2,500-recipe SAMPLE (committed). Full DB is built in CI only.
 data-pipeline/      Python: builds recipes.db from the Food.com datasets (+ pytest)
@@ -80,7 +88,10 @@ npm run data:fetch && npm run db:sample   # regenerate sample DB (needs ~1 GB do
 ## Definition of done (every task)
 typecheck, lint, `npm test` and pipeline pytest pass; CI green; docs updated when behaviour
 or schema changes; new pure logic gets unit tests in `src/lib/__tests__/` (node:test,
-run with `node --experimental-strip-types`, import with the `.ts` extension).
+run with `node --experimental-strip-types`, import with the `.ts` extension). New or changed
+queries get a case in `src/lib/__tests__/queries.test.ts`, which runs the real SQL of
+`src/db/recipes.ts` against the sample DB through Node's built-in `node:sqlite` — so
+`recipes.ts` keeps relative `.ts` imports (no `@/` alias) and only type-imports expo-sqlite.
 
 ## Gotchas
 - `npx expo install` may fail behind a proxy → use the version from
@@ -100,3 +111,6 @@ run with `node --experimental-strip-types`, import with the `.ts` extension).
 - `recipe_ingredients` has no index by recipe: to know which ingredients a recipe misses, read
   `recipes.ingredients` (`recipeIngredientIds`) + `missingIds()`; don't query it by `recipe_id`.
 - Build the full DB locally for benchmarks: `npm run data:fetch && npm run db:full` → `build/recipes.db`.
+- FTS5 has no implicit AND before a bracketed group: `ftsQuery` joins terms with explicit `AND`.
+- Typed routes (`.expo/types/router.d.ts`) only exist after `npx expo start` ran once; CI typechecks
+  without them, so run `npm run typecheck` both ways after adding routes.

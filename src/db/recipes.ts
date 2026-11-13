@@ -5,8 +5,9 @@
  */
 import type { SQLiteBindValue, SQLiteDatabase } from 'expo-sqlite';
 
-import { MEAL_COURSES } from '@/lib/constants';
-import { type IngredientTuple, parseIngredientTuple, type IngredientLine } from '@/lib/units';
+// Relative imports with .ts so the query tests can load this file in Node (src/lib/__tests__/queries.test.ts).
+import { MEAL_COURSES } from '../lib/constants.ts';
+import { type IngredientLine, type IngredientTuple, parseIngredientTuple } from '../lib/units.ts';
 
 export interface RecipeFilters {
   /** Bitmask of appliances the user HAS (EQUIPMENT bits). Recipes needing others are hidden. */
@@ -21,6 +22,10 @@ export interface RecipeFilters {
   avoidMask?: number;
   maxDifficulty?: 1 | 2 | 3;
   withImageOnly?: boolean;
+  /** Only recipes that need all of these appliances (EQUIPMENT bits), e.g. the slow cooker collection. */
+  equipmentRequired?: number;
+  /** Every chip must be present (CHIPS keys), e.g. ['one_pot']. */
+  chips?: string[];
 }
 
 export interface RecipeCard {
@@ -79,6 +84,14 @@ export function filterSql(f: RecipeFilters): { sql: string; params: SQLiteBindVa
     params.push(f.maxDifficulty);
   }
   if (f.withImageOnly) parts.push('r.image IS NOT NULL');
+  if (f.equipmentRequired) {
+    parts.push('(r.equipment & ?) = ?');
+    params.push(f.equipmentRequired, f.equipmentRequired);
+  }
+  for (const chip of f.chips ?? []) {
+    parts.push("r.chips LIKE ? ESCAPE '\\'");
+    params.push(`%"${chip.replace(/[\\%_]/g, '\\$&')}"%`);
+  }
   return { sql: parts.map((p) => ` AND ${p}`).join(''), params };
 }
 
@@ -145,33 +158,76 @@ export async function browse(
   );
 }
 
-/** Turn user text into a safe FTS5 query: every word must match, last word as prefix. */
-export function ftsQuery(text: string): string | null {
-  const words = text
+/** Words of a search text, lowercase and accent-free: "Crème brûlée" → ["creme", "brulee"]. */
+export function searchWords(text: string): string[] {
+  return text
     .toLowerCase()
+    .replace(/œ/g, 'oe')
+    .replace(/æ/g, 'ae')
     .normalize('NFKD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .split(/[^a-z0-9]+/)
     .filter(Boolean);
-  if (!words.length) return null;
-  return words.map((w, i) => (i === words.length - 1 ? `"${w}"*` : `"${w}"`)).join(' ');
 }
 
-/** Full-text search on recipe name (weighted), ingredients and keywords. */
+/**
+ * Turn user text into a safe FTS5 query: every word must match, the last one as a prefix
+ * (results while typing). `alternatives` lists other terms that also satisfy a word, e.g. the
+ * French "poulet" → the English "chicken" used in the index.
+ */
+export function ftsQuery(text: string, alternatives?: ReadonlyMap<string, readonly string[]>): string | null {
+  const words = searchWords(text);
+  if (!words.length) return null;
+  return words
+    .map((w, i) => {
+      const own = i === words.length - 1 ? `"${w}"*` : `"${w}"`;
+      const alts = (alternatives?.get(w) ?? []).map((a) => `"${a.replace(/"/g, '')}"`);
+      return alts.length ? `(${[own, ...alts].join(' OR ')})` : own;
+    })
+    .join(' AND '); // explicit: FTS5 has no implicit AND before a bracketed group
+}
+
+/**
+ * English ingredient names for words typed in French ("poulet" → chicken, "riz" → rice), so a
+ * French search finds the English recipes. Words that already are the English name add nothing.
+ */
+export async function searchAlternatives(db: SQLiteDatabase, text: string): Promise<Map<string, string[]>> {
+  const out = new Map<string, string[]>();
+  for (const w of new Set(searchWords(text))) {
+    if (w.length < 3) continue;
+    const rows = await db.getAllAsync<{ name: string }>(
+      `SELECT name FROM ingredients WHERE name_fr IS NOT NULL AND (search LIKE ? OR search LIKE ?)
+       ORDER BY recipes DESC LIMIT 6`,
+      [`${w}%`, `% ${w}%`],
+    );
+    const names = rows
+      .map((r) => r.name)
+      .filter((n) => !searchWords(n).some((x) => x.startsWith(w)))
+      .slice(0, 3);
+    if (names.length) out.set(w, names);
+  }
+  return out;
+}
+
+export type SearchSort = SortOrder | 'relevance';
+
+/** Full-text search on recipe name (weighted), ingredients and keywords; English or French words. */
 export async function search(
   db: SQLiteDatabase,
   text: string,
   filters: RecipeFilters = {},
+  sort: SearchSort = 'relevance',
   limit = 40,
   offset = 0,
 ): Promise<RecipeCard[]> {
-  const match = ftsQuery(text);
-  if (!match) return browse(db, filters, 'popular', limit, offset);
+  const match = ftsQuery(text, await searchAlternatives(db, text));
+  if (!match) return browse(db, filters, sort === 'relevance' ? 'popular' : sort, limit, offset);
   const f = filterSql(filters);
+  const order = sort === 'relevance' ? 'bm25(recipe_fts, 10.0, 2.0, 1.0) - r.score * 0.5' : ORDER[sort];
   return db.getAllAsync<RecipeCard>(
     `SELECT ${CARD_COLUMNS} FROM recipe_fts JOIN recipes r ON r.id = recipe_fts.rowid
      WHERE recipe_fts MATCH ?${f.sql}
-     ORDER BY bm25(recipe_fts, 10.0, 2.0, 1.0) - r.score * 0.5
+     ORDER BY ${order}
      LIMIT ? OFFSET ?`,
     [match, ...f.params, limit, offset],
   );

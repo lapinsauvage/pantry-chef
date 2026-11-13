@@ -4,7 +4,7 @@
  */
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { StyleSheet, TextInput, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { useRecipeDb } from '@/db/recipe-db';
 import { type Ingredient, ingredientsByName, searchIngredients } from '@/db/recipes';
@@ -15,10 +15,10 @@ import { hasBit, type LanguagePref, toggleBit } from '@/lib/settings';
 import type { UnitSystem } from '@/lib/units';
 import { addBasicIngredient, removeBasicIngredient, useBasics } from '@/state/basics';
 import { updateSettings, useSettings } from '@/state/settings';
-import { radius, space, TOUCH, typography, useColors } from '@/theme';
+import { space, useColors } from '@/theme';
 
 import { Icon } from './icon';
-import { AppText, Chip, ChipGroup, ChoiceRow, NavRow, Section } from './ui';
+import { AppText, Chip, ChipGroup, ChoiceRow, NavRow, SearchField, Section } from './ui';
 
 /** "Oven, Stovetop" — labels of the selected flags, or "None". */
 export function selectedLabels(flags: readonly Flag[], mask: number, lang: Lang, none: string): string {
@@ -171,7 +171,6 @@ const SUGGESTED_BASICS = [...DEFAULT_BASICS, ...BASIC_SUGGESTIONS];
 export function BasicsEditor() {
   const db = useRecipeDb();
   const { t, lang } = useI18n();
-  const colors = useColors();
   const basics = useBasics();
   const [suggestions, setSuggestions] = useState<Ingredient[]>([]);
   const [query, setQuery] = useState('');
@@ -229,21 +228,7 @@ export function BasicsEditor() {
       </View>
 
       <View style={styles.group}>
-        <View style={[styles.search, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Icon name="search" size={18} color={colors.textMuted} />
-          <TextInput
-            value={query}
-            onChangeText={setQuery}
-            placeholder={t.settings.searchIngredient}
-            placeholderTextColor={colors.textMuted}
-            accessibilityLabel={t.settings.searchIngredient}
-            autoCapitalize="none"
-            autoCorrect={false}
-            returnKeyType="search"
-            clearButtonMode="while-editing"
-            style={[styles.input, { color: colors.text }]}
-          />
-        </View>
+        <SearchField value={query} onChangeText={setQuery} label={t.settings.searchIngredient} />
         {searchRows ? (
           searchRows.length ? (
             <ChipGroup>
@@ -294,14 +279,4 @@ const styles = StyleSheet.create({
   group: { gap: space.md },
   flex: { flex: 1 },
   note: { flexDirection: 'row', gap: space.sm, paddingHorizontal: space.lg },
-  search: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.sm,
-    minHeight: TOUCH,
-    paddingHorizontal: space.md,
-    borderRadius: radius.md,
-    borderWidth: 1,
-  },
-  input: { flex: 1, ...typography.body, paddingVertical: space.sm },
 });

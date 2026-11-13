@@ -6,7 +6,7 @@
  */
 import { router } from 'expo-router';
 import type { SQLiteDatabase } from 'expo-sqlite';
-import { type ReactNode, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { type ReactNode, Suspense, useCallback, useMemo } from 'react';
 import { ActivityIndicator, FlatList, ScrollView, StyleSheet, View } from 'react-native';
 
 import { type RecipeResult, RecipeRow } from '@/components/recipe-card';
@@ -15,6 +15,7 @@ import { AppText, Button, Chip, ChipGroup } from '@/components/ui';
 import { useRecipeDb } from '@/db/recipe-db';
 import { findByPantry, ingredientsByIds, recipeIngredientIds, type RecipeCard, stapleIds } from '@/db/recipes';
 import { useIngredientNames } from '@/hooks/use-ingredient-names';
+import { usePagedQuery } from '@/hooks/use-paged-query';
 import { ingredientName, useI18n } from '@/i18n';
 import { type Lang, TIME_PRESETS } from '@/lib/constants';
 import { COURSE_GROUPS, cookFilters, hasOverrides, MISSING_CHOICES, missingIds, queryKey } from '@/lib/cook';
@@ -46,14 +47,6 @@ async function withMissingNames(
   });
 }
 
-interface Results {
-  key: string;
-  rows: RecipeResult[];
-  done: boolean;
-  error: boolean;
-  loadingMore: boolean;
-}
-
 export default function CookScreen() {
   return (
     <Suspense fallback={<PreparingRecipes />}>
@@ -74,8 +67,6 @@ function CookContent() {
   const basicIds = useMemo(() => basics.map((b) => b.id), [basics]);
   const filters = useMemo(() => cookFilters(opts, settings), [opts, settings]);
   const key = queryKey(selected, basicIds, opts, filters);
-  const [results, setResults] = useState<Results | null>(null);
-
   const fetchPage = useCallback(
     async (offset: number) => {
       const rows = await findByPantry(db, {
@@ -91,51 +82,19 @@ function CookContent() {
     [db, selected, basicIds, opts.maxMissing, filters, lang],
   );
 
-  // Debounced first page whenever the query changes.
-  useEffect(() => {
-    if (!selected.length) return;
-    let live = true;
-    const timer = setTimeout(() => {
-      fetchPage(0).then(
-        (rows) => live && setResults({ key, rows, done: rows.length < PAGE, error: false, loadingMore: false }),
-        () => live && setResults({ key, rows: [], done: true, error: true, loadingMore: false }),
-      );
-    }, 300);
-    return () => {
-      live = false;
-      clearTimeout(timer);
-    };
-  }, [fetchPage, key, selected.length]);
-
-  const current = results?.key === key ? results : null;
-  const loadMore = () => {
-    if (!current || current.done || current.loadingMore || current.error) return;
-    setResults({ ...current, loadingMore: true });
-    const update = (patch: (r: Results) => Results) => setResults((r) => (r && r.key === key ? patch(r) : r));
-    fetchPage(current.rows.length).then(
-      (rows) =>
-        update((r) => {
-          const seen = new Set(r.rows.map((x) => x.id));
-          return { ...r, rows: [...r.rows, ...rows.filter((x) => !seen.has(x.id))], done: rows.length < PAGE, loadingMore: false };
-        }),
-      () => update((r) => ({ ...r, done: true, loadingMore: false })),
-    );
-  };
+  const list = usePagedQuery(selected.length ? key : null, fetchPage, { pageSize: PAGE });
 
   const hasPantry = selected.length > 0;
-  const loading = hasPantry && !current;
   return (
     <FlatList
-      data={hasPantry ? (results?.rows ?? []) : []}
+      data={list.rows}
       keyExtractor={(r) => String(r.id)}
       renderItem={({ item }) => <RecipeRow recipe={item} />}
       ItemSeparatorComponent={Gap}
-      ListHeaderComponent={<CookControls loading={loading} />}
-      ListEmptyComponent={
-        !hasPantry ? <EmptyPantry /> : loading ? undefined : current?.error ? <LoadError /> : <NoResults />
-      }
-      ListFooterComponent={current?.loadingMore ? <ActivityIndicator style={styles.footer} /> : undefined}
-      onEndReached={loadMore}
+      ListHeaderComponent={<CookControls loading={list.loading} />}
+      ListEmptyComponent={!hasPantry ? <EmptyPantry /> : list.error ? <LoadError /> : list.empty ? <NoResults /> : undefined}
+      ListFooterComponent={list.loadingMore ? <ActivityIndicator style={styles.footer} /> : undefined}
+      onEndReached={list.loadMore}
       onEndReachedThreshold={0.6}
       initialNumToRender={8}
       windowSize={9}
