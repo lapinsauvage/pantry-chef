@@ -8,7 +8,8 @@ you can cook. You can also browse and search ~107,000 rated recipes.
 - **Languages:** app UI in **English and French** (Belgian French wording where it differs:
   *taque*, *sucre impalpable*, *cassonade*, *poudre à lever*). Recipe text stays English;
   ingredient names have a French hint.
-- **Units:** metric by default (g, ml, °C, cm), US units as a setting. Spoons stay spoons.
+- **Units:** metric by default (g, ml, °C, cm), US units as a setting. Spoons stay spoons; cups
+  mentioned inside step text stay cups.
 - **Offline-first:** all recipe data ships inside the app (SQLite). Only photos load from
   the internet (cached). No account, no server, nothing to pay.
 
@@ -76,7 +77,9 @@ bundled ~220 MB database; show a progress/"preparing recipes" state, never a fro
 - **Ingredients:** formatted with `formatIngredient` in the chosen unit system; in French UI
   show the French ingredient name (`canonical_fr`) as a small hint under the English line.
   Mark lines the user has (pantry ∪ basics) with ✓; tap to check off while cooking.
-- **Steps:** numbered, text passed through `metricizeText` (°F→°C, inches→cm).
+- **Steps:** numbered, text passed through `metricizeText` (°F→°C, inches→cm/mm, oz/lb→g/kg,
+  fl oz/pints/quarts/gallons→ml/l). **Cups stay cups** in step text and ingredient notes (spoons too);
+  only the ingredient quantity column converts cups (→ g for baking ingredients, else ml).
 - Nutrition per serving (kcal, protein, carbs, fat) — "estimate" label.
 - Buttons: ♥ favourite · "Add missing to shopping list" (`missingIngredients`) · "Start cooking".
 - Footer: "Recipe from Food.com by its author" + link (`sourceUrl`) — always shown.

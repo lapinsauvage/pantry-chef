@@ -67,7 +67,8 @@ npm run data:fetch && npm run db:sample   # regenerate sample DB (needs ~1 GB do
 - Every user-facing string comes from `src/i18n/en.ts` + `src/i18n/fr.ts` (`const { t, lang } = useI18n()`;
   value-dependent strings are functions; flag/course labels use `x.label[lang]` from constants).
   French = Belgian usage (taque, sucre impalpable, cassonade, septante/nonante if spelled out).
-- Show quantities via `formatIngredient` and step text via `metricizeText`; metric by default.
+- Show quantities via `formatIngredient` and step text via `metricizeText(text, units, lang)`; metric
+  by default. In free text (steps, notes) cups and spoons stay as written — the user's choice.
 - Always show the Food.com attribution link on recipe screens (`sourceUrl`). The data is for
   personal use only — never add store-publishing, public hosting or sharing of the database.
 - No accounts, backend or analytics. Photos are the only network use (expo-image with cache).

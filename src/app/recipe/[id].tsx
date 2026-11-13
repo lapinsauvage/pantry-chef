@@ -296,14 +296,14 @@ function RecipeBody({ recipe, staples }: { recipe: RecipeDetail; staples: Readon
             {t.recipe.steps}
           </AppText>
           {recipe.steps.map((step, i) => (
-            <View key={i} style={styles.step} accessible accessibilityLabel={`${t.recipe.step(i + 1)}. ${metricizeText(step, units)}`}>
+            <View key={i} style={styles.step} accessible accessibilityLabel={`${t.recipe.step(i + 1)}. ${metricizeText(step, units, lang)}`}>
               <View style={[styles.stepNumber, { backgroundColor: colors.primarySoft }]}>
                 <AppText variant="label" color={colors.onPrimarySoft}>
                   {String(i + 1)}
                 </AppText>
               </View>
               <AppText variant="body" style={styles.flex}>
-                {metricizeText(step, units)}
+                {metricizeText(step, units, lang)}
               </AppText>
             </View>
           ))}

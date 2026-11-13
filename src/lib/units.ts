@@ -72,7 +72,7 @@ const KEEP_IN_METRIC = new Set(['tsp', 'tbsp', 'pinch', 'dash', 'drop']);
 const UNIT_LABEL: Record<string, [singular: string, plural: string]> = {
   cup: ['cup', 'cups'], tbsp: ['tbsp', 'tbsp'], tsp: ['tsp', 'tsp'], floz: ['fl oz', 'fl oz'],
   oz: ['oz', 'oz'], lb: ['lb', 'lb'], pint: ['pint', 'pints'], quart: ['quart', 'quarts'],
-  gallon: ['gallon', 'gallons'], ml: ['ml', 'ml'], l: ['l', 'l'], g: ['g', 'g'], kg: ['kg', 'kg'],
+  gallon: ['gallon', 'gallons'], ml: ['ml', 'ml'], l: ['l', 'l'], g: ['g', 'g'], kg: ['kg', 'kg'], mm: ['mm', 'mm'],
   cm: ['cm', 'cm'], inch: ['inch', 'inches'], pinch: ['pinch', 'pinches'], dash: ['dash', 'dashes'],
   clove: ['clove', 'cloves'], can: ['can', 'cans'], package: ['package', 'packages'],
   jar: ['jar', 'jars'], bottle: ['bottle', 'bottles'], box: ['box', 'boxes'],
@@ -118,6 +118,8 @@ export function convertQuantity(q: Quantity, system: UnitSystem, ingredient?: st
   }
   if (unit === 'inch') {
     const [a, b] = map((n) => n * 2.54);
+    // under 1 cm, millimetres read better: ¼ inch → 6 mm
+    if ((b ?? a ?? 0) < 1) return { qmin: a == null ? null : a * 10, qmax: b == null ? null : b * 10, unit: 'mm' };
     return { qmin: a, qmax: b, unit: 'cm' };
   }
   return q;
@@ -152,9 +154,12 @@ export function formatMetric(n: number, unit: string | null, lang: 'en' | 'fr' =
   let v: number;
   if (unit === 'g' || unit === 'ml') {
     v = n >= 100 ? Math.round(n / 5) * 5 : n >= 10 ? Math.round(n) : Math.round(n * 2) / 2;
-  } else if (unit === 'l' || unit === 'kg' || unit === 'cm') {
+  } else if (unit === 'l' || unit === 'kg') {
     v = Math.round(n * 100) / 100;
-    if (unit === 'cm') v = n >= 10 ? Math.round(n) : Math.round(n * 2) / 2;
+  } else if (unit === 'cm') {
+    v = n >= 10 ? Math.round(n) : n >= 3 ? Math.round(n * 2) / 2 : Math.round(n * 10) / 10;
+  } else if (unit === 'mm') {
+    v = Math.max(1, Math.round(n));
   } else {
     return formatFraction(n);
   }
@@ -201,7 +206,9 @@ export function formatIngredient(line: IngredientLine, opts: FormatOptions = {})
     const n = q.qmax ?? q.qmin ?? 1;
     quantity += `${quantity ? ' ' : ''}${unitLabel(q.unit, n)}`;
   }
-  return { quantity: quantity.trim(), text: line.text, note: line.note };
+  // Free text in the name/note ("1/2-inch thick", "about 8 oz") follows the unit system too.
+  const free = (t: string) => (system === 'metric' && t ? metricizeText(t, 'metric', lang) : t);
+  return { quantity: quantity.trim(), text: free(line.text), note: free(line.note) };
 }
 
 export function unitLabel(unit: string, n: number): string {
@@ -221,14 +228,16 @@ const EXISTING_C =
   /^\s*(?:\(\s*(?:about\s*)?(\d{2,3})\s*(?:°|º|˚|degrees?|deg\.?)?\s*C(?:el[cs]ius)?\s*\)|(?:\/|or\b)\s*(\d{2,3})\s*(?:°|º|˚|degrees?|deg\.?)?\s*(?:C(?:el[cs]ius)?\b)?)/i;
 /** Celsius value right before a °F one: "190°C/", "200°C or ". */
 const PRECEDING_C = /(\d{2,3})\s*(?:°|º|˚|degrees?|deg\.?)?\s*C(?:el[cs]ius)?(\s*(?:\/|\bor\b)\s*)$/i;
-const PAN = /(\d+(?:\.\d+)?)\s*(?:x|×|by)\s*(\d+(?:\.\d+)?)(?:\s*(?:x|×|by)\s*(\d+(?:\.\d+)?))?(?:\s*|-)inch(?:es)?\b|(\d+(?:\.\d+)?)(?:\s*|-)inch(?:es)?\b|(\d+(?:\.\d+)?)"/gi;
 
 export function fToC(f: number): number {
   return Math.round(((f - 32) * 5) / 9 / 5) * 5;
 }
 
-/** Replace Fahrenheit oven temperatures and inch sizes with metric equivalents. */
-export function metricizeText(text: string, system: UnitSystem = 'metric'): string {
+/**
+ * Metric version of free recipe text (steps, ingredient notes): °F → °C, inches → cm/mm,
+ * oz/lb → g/kg, fl oz/pints/quarts/gallons → ml/l. Cups and spoons are left as written.
+ */
+export function metricizeText(text: string, system: UnitSystem = 'metric', lang: 'en' | 'fr' = 'en'): string {
   if (system === 'us') return text;
   let out = '';
   let last = 0;
@@ -257,17 +266,89 @@ export function metricizeText(text: string, system: UnitSystem = 'metric'): stri
     }
   }
   out += text.slice(last);
-  return out.replace(PAN, (whole, w, h, d, single, quote) => {
-    const cm = (s: string) => {
-      const v = Number(s) * 2.54;
-      return String(v >= 10 ? Math.round(v) : Math.round(v * 2) / 2);
-    };
-    if (w && h) return d ? `${cm(w)} x ${cm(h)} x ${cm(d)} cm` : `${cm(w)} x ${cm(h)} cm`;
-    if (single) return `${cm(single)} cm`;
-    if (quote) return `${cm(quote)} cm`;
-    return whole;
+  return metricizeAmounts(out, lang);
+}
+
+// ---------------------------------------------------------------------------
+// Amounts inside free text (steps, ingredient notes). Cups and spoons are left as written.
+
+const VULGAR: Record<string, number> = {
+  '½': 1 / 2, '¼': 1 / 4, '¾': 3 / 4, '⅓': 1 / 3, '⅔': 2 / 3, '⅛': 1 / 8, '⅜': 3 / 8, '⅝': 5 / 8, '⅞': 7 / 8,
+};
+/** "1 1/2", "1-1/2", "1½", "½", "3/4", "2.5", "12" */
+const NUM = String.raw`\d+(?:\s+|-)\d+\/\d+|\d+\/\d+|\d+\s?[½¼¾⅓⅔⅛⅜⅝⅞]|[½¼¾⅓⅔⅛⅜⅝⅞]|\d+(?:\.\d+)?`;
+
+/** Parse an amount written in a recipe: "1 1/2", "1-1/2", "1½", "½", "3/4", "2.5". */
+export function parseAmount(text: string): number | null {
+  const t = text.trim();
+  let m = /^(\d+)(?:\s+|-)(\d+)\/(\d+)$/.exec(t);
+  if (m) return Number(m[3]) ? Number(m[1]) + Number(m[2]) / Number(m[3]) : null;
+  m = /^(\d+)\/(\d+)$/.exec(t);
+  if (m) return Number(m[2]) ? Number(m[1]) / Number(m[2]) : null;
+  m = /^(\d+)?\s?([½¼¾⅓⅔⅛⅜⅝⅞])$/.exec(t);
+  if (m) return (m[1] ? Number(m[1]) : 0) + VULGAR[m[2]];
+  return /^\d+(?:\.\d+)?$/.test(t) ? Number(t) : null;
+}
+
+const SEP = String.raw`\s*(?:-|–|to|or)\s*`;
+/** Pan sizes: "9x13-inch", "8 x 8 x 2 inch", '9"x13"' */
+const DIMENSIONS = new RegExp(
+  String.raw`(^|[^\w/.])(${NUM})"?\s*(?:x|×|by)\s*(${NUM})"?(?:\s*(?:x|×|by)\s*(${NUM}))?(\s*-?\s*)(inch(?:es)?\b|")`,
+  'gi',
+);
+/** "8-ounce", "1 1/2 lbs", "2 to 3 pounds", "1 quart", "1/2-inch", '9"' — not cups/spoons. */
+const AMOUNT = new RegExp(
+  String.raw`(^|[^\w/.,½¼¾⅓⅔⅛⅜⅝⅞-])(${NUM})(?:${SEP}(${NUM}))?(\s*-?\s*)(fl\.?\s?oz\b\.?|fluid\s+ounces?\b|ounces?\b|oz\b\.?|pounds?\b|lbs?\b\.?|pints?\b|quarts?\b|qts?\b\.?|gallons?\b|inch(?:es)?\b|")`,
+  'gi',
+);
+/** "6-ounce ramekins", "12-ounce glass": ounces of volume. */
+const FLUID_CONTAINER = /^\s*(?:custard\s+)?(?:glass(?:es)?|mugs?|jars?|bottles?|ramekins?|cups?|molds?|moulds?|pitchers?|carafes?)\b/i;
+
+function unitOf(token: string): string {
+  const t = token.toLowerCase();
+  if (t.startsWith('fl')) return 'floz';
+  if (t.startsWith('o')) return 'oz';
+  if (t.startsWith('po') || t.startsWith('l')) return 'lb';
+  if (t.startsWith('pi')) return 'pint';
+  if (t.startsWith('q')) return 'quart';
+  if (t.startsWith('g')) return 'gallon';
+  return 'inch';
+}
+
+function metricAmount(qmin: number, qmax: number | null, unit: string, lang: 'en' | 'fr'): string {
+  const q = convertQuantity({ qmin, qmax, unit }, 'metric');
+  const a = formatMetric(q.qmin!, q.unit, lang);
+  const b = q.qmax != null ? formatMetric(q.qmax, q.unit, lang) : null;
+  return `${b && b !== a ? `${a}–${b}` : a} ${unitLabel(q.unit!, q.qmax ?? q.qmin!)}`;
+}
+
+function metricizeAmounts(text: string, lang: 'en' | 'fr'): string {
+  const out = text.replace(DIMENSIONS, (whole, pre: string, w: string, h: string, d: string | undefined, sep: string, unit: string) => {
+    const dims = [w, h, d].filter((x): x is string => !!x).map(parseAmount);
+    if (dims.some((x) => x == null) || (unit === '"' && sep)) return whole;
+    return `${pre}${dims.map((x) => formatMetric(x! * 2.54, 'cm', lang)).join(' x ')} cm`;
+  });
+  const converted = out.replace(
+    AMOUNT,
+    (whole, pre: string, a: string, b: string | undefined, sep: string, token: string, offset: number, all: string) => {
+      if (token === '"' && sep) return whole; // a closing quote, not inches
+      const qmin = parseAmount(a);
+      const qmax = b ? parseAmount(b) : null;
+      if (qmin == null || (b && qmax == null)) return whole;
+      let unit = unitOf(token);
+      if (unit === 'oz' && FLUID_CONTAINER.test(all.slice(offset + whole.length))) unit = 'floz';
+      return `${pre}${metricAmount(qmin, qmax, unit, lang)}`;
+    },
+  );
+  // "an 8-inch pan" became "an 20 cm pan": fix the article for the new number.
+  return converted.replace(ARTICLE_BEFORE_METRIC, (_whole, article: string, num: string) => {
+    const an = /^8/.test(num) || /^1[18](?![\d])/.test(num);
+    const word = an ? 'an' : 'a';
+    return `${article[0] === 'A' ? word[0].toUpperCase() + word.slice(1) : word} `;
   });
 }
+
+const ARTICLE_BEFORE_METRIC = /\b(an?|An?) (?=(\d[\d.,]*)(?:–[\d.,]+)?(?: x [\d.,]+)* (?:mm|cm|g|kg|ml|l)\b)/g;
 
 /** Scale factor for a recipe, e.g. recipe serves 4, user wants 6 -> 1.5 */
 export function scaleFactor(recipeServings: number | null | undefined, wanted: number): number {

@@ -9,6 +9,7 @@ import {
   formatIngredient,
   metricizeText,
   parseIngredientTuple,
+  parseAmount,
   scaleFactor,
 } from '../units.ts';
 
@@ -62,7 +63,7 @@ test('oven temperatures and pan sizes in steps', () => {
   assert.equal(metricizeText('Bake at 325-350 degrees for 1 hour.'), 'Bake at 165–175°C for 1 hour.');
   assert.equal(metricizeText('Heat oven to 400 F'), 'Heat oven to 205°C');
   assert.equal(metricizeText('Grease a 9x13-inch pan.'), 'Grease a 23 x 33 cm pan.');
-  assert.equal(metricizeText('Use an 8 inch skillet.'), 'Use an 20 cm skillet.');
+  assert.equal(metricizeText('Use an 8 inch skillet.'), 'Use a 20 cm skillet.');
   assert.equal(metricizeText('Cook 2 minutes; serves 100 people.'), 'Cook 2 minutes; serves 100 people.');
   assert.equal(metricizeText('Preheat oven to 350°F.', 'us'), 'Preheat oven to 350°F.');
 });
@@ -98,4 +99,56 @@ test('Celsius already given after the Fahrenheit value is not converted again', 
 test('scale factor', () => {
   assert.equal(scaleFactor(4, 6), 1.5);
   assert.equal(scaleFactor(null, 6), 1);
+});
+
+test('amounts as written in recipes', () => {
+  assert.equal(parseAmount('1 1/2'), 1.5);
+  assert.equal(parseAmount('1-1/2'), 1.5);
+  assert.equal(parseAmount('3/4'), 0.75);
+  assert.equal(parseAmount('1½'), 1.5);
+  assert.equal(parseAmount('¼'), 0.25);
+  assert.equal(parseAmount('2.5'), 2.5);
+  assert.equal(parseAmount('1/0'), null);
+  assert.equal(parseAmount('a few'), null);
+});
+
+test('inches in text, including fractions', () => {
+  assert.equal(metricizeText('Cut into 1/2-inch pieces.'), 'Cut into 1.3 cm pieces.');
+  assert.equal(metricizeText('sliced 1/4 inch thick'), 'sliced 6 mm thick');
+  assert.equal(metricizeText('Roll to 1 1/2 inch thick.'), 'Roll to 4 cm thick.');
+  assert.equal(metricizeText('Cut in 1-1/2" cubes'), 'Cut in 4 cm cubes');
+  assert.equal(metricizeText('cut into 1 to 2 inch chunks'), 'cut into 2.5–5 cm chunks');
+  assert.equal(metricizeText('Leave 2 inches between cookies.'), 'Leave 5 cm between cookies.');
+  assert.equal(metricizeText('Use a 9 x 13 inch pan or a 9"x13" dish.'), 'Use a 23 x 33 cm pan or a 23 x 33 cm dish.');
+  assert.equal(metricizeText('an 8 x 8 x 2-inch dish'), 'a 20 x 20 x 5 cm dish');
+  assert.equal(metricizeText('Use a 7-inch pan. An 8-ounce block.'), 'Use an 18 cm pan. A 225 g block.');
+  assert.equal(metricizeText('an 80 g bar'), 'an 80 g bar');
+  assert.equal(metricizeText('He said "add 2 " later'), 'He said "add 2 " later');
+});
+
+test('weights and liquid volumes in text; cups and spoons stay', () => {
+  assert.equal(metricizeText('Add one 8-ounce package of cream cheese.'), 'Add one 225 g package of cream cheese.');
+  assert.equal(metricizeText('Stir in 1 (14 oz.) can tomatoes.'), 'Stir in 1 (395 g) can tomatoes.');
+  assert.equal(metricizeText('Use 2 to 3 pounds of chicken.'), 'Use 0.91–1.36 kg of chicken.');
+  assert.equal(metricizeText('about 1 1/2 lbs ground beef'), 'about 680 g ground beef');
+  assert.equal(metricizeText('Into a 1 quart jar, pour 2 cups hot water.'), 'Into a 945 ml jar, pour 2 cups hot water.');
+  assert.equal(metricizeText('Pour into each 12-ounce glass.'), 'Pour into each 355 ml glass.');
+  assert.equal(metricizeText('Divide among six 6-ounce ramekins.'), 'Divide among six 175 ml ramekins.');
+  assert.equal(metricizeText('Add 4 fl oz cream and 1 tbsp sugar.'), 'Add 120 ml cream and 1 tbsp sugar.');
+  assert.equal(metricizeText('Makes 1 gallon.'), 'Makes 3.79 l.');
+  assert.equal(metricizeText('Fold in remaining 2 cups of blueberries.'), 'Fold in remaining 2 cups of blueberries.');
+  assert.equal(metricizeText('Add 1 1/2 lbs beef.', 'metric', 'fr'), 'Add 680 g beef.');
+  assert.equal(metricizeText('Cut into 1/2-inch pieces.', 'metric', 'fr'), 'Cut into 1,3 cm pieces.');
+  assert.equal(metricizeText('Add one 8-ounce package.', 'us'), 'Add one 8-ounce package.');
+  // not amounts
+  assert.equal(metricizeText('Bake for 1 hour; serves 4 people, 2 ways.'), 'Bake for 1 hour; serves 4 people, 2 ways.');
+  assert.equal(metricizeText('Bake at 350 or until done'), 'Bake at 350 or until done');
+});
+
+test('ingredient name and note follow the unit system', () => {
+  const bread = parseIngredientTuple([1, null, null, null, null, 'French baguette', 'sliced 1/4-1/2 inch thick']);
+  assert.equal(formatIngredient(bread).note, 'sliced 0.6–1.3 cm thick');
+  assert.equal(formatIngredient(bread, { system: 'us' }).note, 'sliced 1/4-1/2 inch thick');
+  const onion = parseIngredientTuple([1, null, null, null, null, 'onion', 'chopped, about 1 cup']);
+  assert.equal(formatIngredient(onion).note, 'chopped, about 1 cup');
 });
