@@ -10,8 +10,8 @@ A personal, offline cooking app for iPhone and Android:
   favourites and a step-by-step cooking mode.
 - English and French interface. Works without internet (except recipe photos).
 
-> Status: foundation ready (data, database, queries, build pipeline). The app screens are
-> built next with Claude Code — see `docs/SPEC.md` milestones M1–M5.
+> Status: M1 done — tabs, English/French UI, onboarding, settings and light/dark theme on top of
+> the data foundation. The cooking screens come next — see `docs/SPEC.md` milestones M2–M5.
 
 ## Get the app on your phone
 GitHub → **Actions** → **Build apps** → **Run workflow**, then download from **Releases**:

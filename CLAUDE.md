@@ -14,17 +14,26 @@ milestone), `docs/DATA.md` (database schema and codes), `docs/BUILD.md` (builds,
   `src/app/_layout.tsx`, query layer `src/db/recipes.ts`, user DB `src/db/user.ts`,
   units/temperatures `src/lib/units.ts`, codes/labels `src/lib/constants.ts`, CI and
   "Build apps" workflow (APK + unsigned IPA).
-- `src/app/index.tsx` is a placeholder smoke-test screen. **Next: M1** (navigation, i18n,
-  settings, onboarding).
+- **M1 done:** native tabs (each with a header stack + settings button), onboarding behind a
+  `Stack.Protected` guard, EN/FR i18n (`src/i18n/`), settings store on `user.db`
+  (`src/state/`), light/dark theme (`src/theme/`), Settings screens, background recipe-DB import.
+  Browse/Favourites/Shopping tabs are placeholders. **Next: M2** (Cook tab + Recipe screen).
 
 ## Map
 ```
-src/app/            routes only (Expo Router)
+src/app/            routes only (Expo Router): _layout (guard), onboarding, settings/*, (tabs)/<tab>/{_layout,index}
+src/components/     ui.tsx (Text, Button, Section, rows, Chip), kitchen.tsx (editors shared by
+                    onboarding + settings), navigation.tsx (TabStack, header options), states.tsx, icon.tsx
+src/i18n/           en.ts + fr.ts (typed dictionaries) · index.tsx (useI18n → { t, lang })
+src/state/          settings.ts (useSettings/updateSettings), basics.ts, reset.ts — stores over user.db
+src/theme/          palette (light/dark), useColors, spacing, typography
+src/db/recipe-db.ts first-launch import of recipes.db; useRecipeDb() suspends until ready
 src/db/recipes.ts   ALL reads of recipes.db (findByPantry, browse, search, getRecipe, searchIngredients…)
 src/db/user.ts      user.db: settings, pantry, basics, favourites, history, shopping list
 src/db/data-version.ts   rewritten by CI (scripts/use-full-db.sh) — don't edit by hand
 src/lib/units.ts    formatIngredient, convertQuantity, metricizeText (°F→°C), scaleFactor
 src/lib/constants.ts     EQUIPMENT/DIETS/AVOID bits, COURSES, CUISINES, categories, labels EN/FR
+src/lib/settings.ts      Settings type, defaults, parse/serialize, resolveLanguage (pure, tested)
 assets/db/recipes.db     2,500-recipe SAMPLE (committed). Full DB is built in CI only.
 data-pipeline/      Python: builds recipes.db from the Food.com datasets (+ pytest)
 .github/workflows/  ci.yml (checks) · build-apps.yml (DB → APK + unsigned IPA → Release)
@@ -44,7 +53,8 @@ npm run data:fetch && npm run db:sample   # regenerate sample DB (needs ~1 GB do
 - Keep `src/lib/constants.ts` in sync with the pipeline (`tests/test_constants_sync.py` enforces it).
 - All SQL goes through `src/db/recipes.ts` / `src/db/user.ts` with bound parameters — never
   interpolate user input into SQL. FTS input goes through `ftsQuery()`.
-- Every user-facing string comes from `src/i18n/en.ts` + `src/i18n/fr.ts` (create in M1).
+- Every user-facing string comes from `src/i18n/en.ts` + `src/i18n/fr.ts` (`const { t, lang } = useI18n()`;
+  value-dependent strings are functions; flag/course labels use `x.label[lang]` from constants).
   French = Belgian usage (taque, sucre impalpable, cassonade, septante/nonante if spelled out).
 - Show quantities via `formatIngredient` and step text via `metricizeText`; metric by default.
 - Always show the Food.com attribution link on recipe screens (`sourceUrl`). The data is for
@@ -64,6 +74,12 @@ run with `node --experimental-strip-types`, import with the `.ts` extension).
 - `npx expo install` may fail behind a proxy → use the version from
   `node_modules/expo/bundledNativeModules.json` with `npm install`.
 - The iOS app can only be compiled by the GitHub workflow (macOS runner); don't try Xcode locally on Linux.
-- First launch of a release build copies the ~220 MB DB — keep the Suspense fallback / progress UI.
+- First launch of a release build copies the ~220 MB DB in the background (`recipeDb()` starts in
+  the root layout). Components that need recipes call `useRecipeDb()` inside
+  `<Suspense fallback={<PreparingRecipes />}>` — never block the whole app on it.
+- Expo SDK 58: JS tabs moved to `expo-router/js-tabs`; we use `expo-router/native-tabs` (no header —
+  hence a `Stack` per tab via `TabStack`). RN 0.88 `ScrollView` refs are `ScrollViewInstance`.
+- Keyboard: Android is edge-to-edge, so use `KeyboardAvoidingView behavior="padding"` on both platforms.
+- The app isn't meant for web: expo-sqlite's web build can't do the synchronous `user.db` open at startup.
 - `findByPantry` excludes staples (water, salt, pepper, ice, cooking spray) automatically;
   user "basics" are passed in `basics` and count as owned.

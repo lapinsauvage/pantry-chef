@@ -10,8 +10,9 @@ let db: SQLiteDatabase | null = null;
 
 export function userDb(): SQLiteDatabase {
   if (!db) {
-    db = openDatabaseSync('user.db');
-    migrate(db);
+    const opened = openDatabaseSync('user.db');
+    migrate(opened);
+    db = opened; // only cache once migrated, so a failed first attempt is retried in full
   }
   return db;
 }

@@ -96,8 +96,15 @@ Tokenizer `porter unicode61 remove_diacritics 2`. Rank with `bm25(recipe_fts, 10
 `settings(key, value)`, `pantry(ingredient_id, name, added_at)`, `basics(ingredient_id, name)`,
 `favorites(recipe_id, added_at)`, `history(recipe_id, viewed_at)`,
 `shopping_items(id, text, ingredient_id, recipe_id, checked, created_at)`.
-Ingredient **names** are stored next to ids so pantry/basics can be re-mapped by name if a
-future data build renumbers ingredients (`ingredientIdsByName`).
+Ingredient **names** are stored next to ids: when a new recipe database is imported, pantry and
+basics are re-linked by name (`remapIngredientIds` in `src/db/recipe-db.ts`); names that no
+longer exist are dropped.
+
+`settings` keys (typed access: `src/lib/settings.ts` + `src/state/settings.ts`):
+`language` (`system`|`en`|`fr`), `units` (`metric`|`us`), `equipment` / `diet` / `avoid`
+(bitmasks as decimal text), `onboarded` (`1`), `recipe_db_name` (recipe DB file whose import
+completed — an interrupted copy is redone), `basics_seeded` (`1` once `DEFAULT_BASICS` were added).
+Missing or invalid values fall back to the defaults (metric, oven + stovetop + microwave).
 
 ## Known limitations
 - Photos are loaded from Food.com's image CDN; some may disappear over time → show the course placeholder.

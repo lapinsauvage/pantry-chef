@@ -20,18 +20,20 @@ What can I make?" — answer in two taps, ranked by *fewest missing ingredients*
 
 ## Navigation
 
-Expo Router, tabs + stacks (routes in `src/app/`):
+Expo Router, native tabs + stacks (routes in `src/app/`). Each tab is a folder with its own
+`Stack` (`_layout.tsx`, header with the settings gear) and an `index.tsx`.
 
 | Route | Screen |
 |---|---|
-| `(tabs)/index` | **Cook** — "What can I cook?" |
-| `(tabs)/browse` | **Browse** — categories, collections, search |
-| `(tabs)/favorites` | **Favourites** + recently viewed |
-| `(tabs)/shopping` | **Shopping list** |
-| `recipe/[id]` | Recipe detail |
-| `cook/[id]` | Cooking mode (step by step) |
-| `settings` | Settings (gear icon in headers) |
-| `onboarding` | First-run setup (shown until `settings.onboarded = 1`) |
+| `(tabs)/(cook)/index` (`/`) | **Cook** — "What can I cook?" |
+| `(tabs)/browse/index` | **Browse** — categories, collections, search |
+| `(tabs)/favorites/index` | **Favourites** + recently viewed |
+| `(tabs)/shopping/index` | **Shopping list** |
+| `recipe/[id]` | Recipe detail (M2) |
+| `cook/[id]` | Cooking mode, step by step (M4) |
+| `settings/index` | Settings (gear icon in tab headers) |
+| `settings/appliances` · `settings/basics` · `settings/diet` | Settings sub-screens (also used for "My kitchen" on the Cook tab) |
+| `onboarding` | First-run setup; `Stack.Protected` shows it until `settings.onboarded = 1` |
 
 ## Features
 
@@ -117,7 +119,7 @@ Belgian/French recipe pack from a licensed source.
 | | Scope | Done when |
 |---|---|---|
 | **M0** ✅ | Data pipeline, sample + full DB, query layer (`src/db/recipes.ts`), units/temperatures (`src/lib/units.ts`), user DB, CI, build workflows | this repo |
-| **M1** | Tabs + stacks, i18n (EN/FR, follows system, override in settings), settings store on `user.db`, onboarding, theme | App opens to Cook tab in the right language; onboarding saves appliances/basics |
+| **M1** ✅ | Tabs + stacks, i18n (EN/FR, follows system, override in settings), settings store on `user.db`, onboarding, theme | App opens to Cook tab in the right language; onboarding saves appliances/basics |
 | **M2** | Cook tab (picker + results) and Recipe screen (scaling, units, missing list, favourite) | Picking 5 ingredients shows ranked results in < 0.5 s; recipe shows metric quantities |
 | **M3** | Browse: search, categories, collections, filter sheet, sort | FTS search returns results while typing; filters combine correctly |
 | **M4** | Favourites, history, shopping list, cooking mode with timers + keep-awake | Missing ingredients go to the list in one tap; cooking mode stays awake |
