@@ -1,12 +1,15 @@
 import { NativeTabs } from 'expo-router/native-tabs';
 
 import { useI18n } from '@/i18n';
+import { useShoppingCount } from '@/state/shopping';
 import { useColors } from '@/theme';
 
-/** Bottom tabs (platform-native). Each tab holds its own stack with a header (see TabStack). */
+/** Bottom tabs (platform-native). Each tab holds its own stack with a header (see TabStack).
+ * The Shopping tab shows how many items are left to buy. */
 export default function TabsLayout() {
   const { t } = useI18n();
   const colors = useColors();
+  const toBuy = useShoppingCount();
   return (
     <NativeTabs
       tintColor={colors.primary}
@@ -28,6 +31,7 @@ export default function TabsLayout() {
       <NativeTabs.Trigger name="shopping">
         <NativeTabs.Trigger.Icon sf={{ default: 'cart', selected: 'cart.fill' }} md="shopping_cart" />
         <NativeTabs.Trigger.Label>{t.tabs.shopping}</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Badge hidden={!toBuy}>{String(toBuy)}</NativeTabs.Trigger.Badge>
       </NativeTabs.Trigger>
     </NativeTabs>
   );

@@ -34,7 +34,7 @@ Expo Router, native tabs + stacks (routes in `src/app/`). Each tab is a folder w
 | `recipe/[id]` | Recipe detail |
 | `pantry` | Ingredient picker (modal from the Cook tab) |
 | `filters` | Filter sheet (modal): Cook = appliances / diet / avoid; `?scope=browse` adds time, difficulty, cuisine, photo only |
-| `cook/[id]` | Cooking mode, step by step (M4) |
+| `cook/[id]` | Cooking mode, step by step (full-screen; `?servings=`) |
 | `settings/index` | Settings (gear icon in tab headers) |
 | `settings/appliances` · `settings/basics` · `settings/diet` | Settings sub-screens (also used for "My kitchen" on the Cook tab) |
 | `onboarding` | First-run setup; `Stack.Protected` shows it until `settings.onboarded = 1` |
@@ -91,14 +91,18 @@ bundled ~220 MB database; show a progress/"preparing recipes" state, never a fro
 One step per screen, large type, swipe/next buttons, screen kept awake (`expo-keep-awake`),
 ingredient list in a bottom sheet. Detect durations in a step ("bake 25 minutes",
 "simmer 1 hour") and offer a tap-to-start timer (in-app countdown; notification when the
-app is in background is a later improvement).
+app is in background is a later improvement). Ranges start at the lower bound
+("bake 25-30 minutes" → 25 min); several timers can run while you move between steps; a finished
+timer vibrates and is announced to screen readers.
 
 ### 6. Favourites & history
 Saved recipes (user.db `favorites`) and the last 50 viewed (`history`).
 
 ### 7. Shopping list
 Items from "add missing" (linked to the recipe) and free-text items. Grouped by ingredient
-category, check off, clear checked, share as plain text (React Native `Share`).
+category, check off, clear checked, share as plain text (React Native `Share`). Typed items are
+matched to an ingredient when the text is exactly its English or French name ("oignon" → onion), so
+they land in the right aisle and aren't added twice. The tab badge shows how many items are left.
 
 ### 8. Settings
 Language, units (metric/US), appliances, basics, diet, avoid, data info (`dataInfo`: number
@@ -130,5 +134,5 @@ Belgian/French recipe pack from a licensed source.
 | **M1** ✅ | Tabs + stacks, i18n (EN/FR, follows system, override in settings), settings store on `user.db`, onboarding, theme | App opens to Cook tab in the right language; onboarding saves appliances/basics |
 | **M2** ✅ | Cook tab (picker + results) and Recipe screen (scaling, units, missing list, favourite) | Picking 5 ingredients shows ranked results in < 0.5 s; recipe shows metric quantities |
 | **M3** ✅ | Browse: search, categories, collections, filter sheet, sort | FTS search returns results while typing; filters combine correctly |
-| **M4** | Favourites, history, shopping list, cooking mode with timers + keep-awake | Missing ingredients go to the list in one tap; cooking mode stays awake |
+| **M4** ✅ | Favourites, history, shopping list, cooking mode with timers + keep-awake | Missing ingredients go to the list in one tap; cooking mode stays awake |
 | **M5** | Polish: icon/splash, empty/error states, first-launch import progress, perf pass, run "Build apps" workflow and install on both phones | APK installs on Android; IPA sideloads on iPhone and runs offline |

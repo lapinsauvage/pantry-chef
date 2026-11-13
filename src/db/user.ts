@@ -5,6 +5,8 @@
  */
 import { openDatabaseSync, type SQLiteDatabase } from 'expo-sqlite';
 
+import type { ShoppingItem } from '@/lib/shopping';
+
 const USER_DB_VERSION = 1;
 let db: SQLiteDatabase | null = null;
 
@@ -135,6 +137,16 @@ export function setFavorite(recipeId: number, favorite: boolean): void {
   }
 }
 
+export function getHistoryIds(): number[] {
+  return userDb()
+    .getAllSync<{ recipe_id: number }>('SELECT recipe_id FROM history ORDER BY viewed_at DESC')
+    .map((r) => r.recipe_id);
+}
+
+export function clearHistory(): void {
+  userDb().runSync('DELETE FROM history');
+}
+
 export const HISTORY_SIZE = 50;
 
 /** Remember that a recipe was opened; keeps the last HISTORY_SIZE. */
@@ -178,6 +190,24 @@ export function addShoppingItems(items: readonly NewShoppingItem[]): number {
     }
   });
   return added;
+}
+
+export function getShoppingItems(): ShoppingItem[] {
+  return userDb().getAllSync<ShoppingItem>(
+    'SELECT id, text, ingredient_id, recipe_id, checked, created_at FROM shopping_items ORDER BY created_at, id',
+  );
+}
+
+export function setShoppingChecked(id: number, checked: boolean): void {
+  userDb().runSync('UPDATE shopping_items SET checked = ? WHERE id = ?', [checked ? 1 : 0, id]);
+}
+
+export function removeShoppingItem(id: number): void {
+  userDb().runSync('DELETE FROM shopping_items WHERE id = ?', [id]);
+}
+
+export function clearCheckedShopping(): void {
+  userDb().runSync('DELETE FROM shopping_items WHERE checked = 1');
 }
 
 // ---------------------------------------------------------------------------

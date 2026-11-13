@@ -27,12 +27,18 @@ milestone), `docs/DATA.md` (database schema and codes), `docs/BUILD.md` (builds,
   English names: "poulet riz" → chicken rice), collections / courses / cuisines → `browse/list`,
   sort (best match / popular / quickest / best rated), filter sheet `/filters?scope=browse`
   (time, difficulty, cuisine, photo only, appliances, diet, avoid; AND-combined with the preset
-  by `browseFilters`). **Next: M4** (favourites + history, shopping list, cooking mode).
+  by `browseFilters`).
+- **M4 done:** Favourites tab (saved ♥ / last 50 viewed), Shopping list tab (typed items matched
+  to ingredients EN/FR → aisle groups, tick, clear ticked, share as text, tab badge = items to
+  buy; "Add missing" from recipes), Cooking mode `cook/[id]` (full-screen, one step per page,
+  `useKeepAwake`, timers from `detectTimers`, ingredients sheet). Background timer notifications
+  are not done. **Next: M5** (polish, icon/splash, perf pass, build + install on both phones).
 
 ## Map
 ```
 src/app/            routes only (Expo Router): _layout (guard), onboarding, settings/*, (tabs)/<tab>/{_layout,index},
-                    recipe/[id], pantry (picker modal), filters (filter modal; ?scope=browse), browse/list
+                    recipe/[id], cook/[id] (cooking mode), pantry (picker modal), filters (filter modal;
+                    ?scope=browse), browse/list
 src/components/     ui.tsx (Text, Button, Section, rows, Chip), kitchen.tsx (editors shared by
                     onboarding + settings), navigation.tsx (TabStack, header options), states.tsx, icon.tsx,
                     recipe-card.tsx (RecipeRow list item, RecipePhoto with course placeholder),
@@ -40,7 +46,8 @@ src/components/     ui.tsx (Text, Button, Section, rows, Chip), kitchen.tsx (edi
 src/hooks/          use-ingredient-names.ts (French names for pantry/basics), use-paged-query.ts
                     (debounced first page, infinite scroll, stale responses dropped — Cook + Browse)
 src/i18n/           en.ts + fr.ts (typed dictionaries) · index.tsx (useI18n → { t, lang })
-src/state/          settings.ts (useSettings/updateSettings), basics.ts, pantry.ts, favorites.ts, cook.ts /
+src/state/          settings.ts (useSettings/updateSettings), basics.ts, pantry.ts, favorites.ts (+ history),
+                    shopping.ts, cook.ts /
                     browse.ts (tab options, in memory), reset.ts — small stores over user.db
 src/theme/          palette (light/dark), useColors, spacing, typography
 src/db/recipe-db.ts first-launch import of recipes.db; useRecipeDb() suspends until ready
@@ -52,7 +59,9 @@ src/lib/constants.ts     EQUIPMENT/DIETS/AVOID bits, COURSES, CUISINES, categori
 src/lib/settings.ts      Settings type, defaults, parse/serialize, resolveLanguage (pure, tested)
 src/lib/cook.ts          course groups, cookFilters, queryKey, missingIds, lineStatus (pure, tested)
 src/lib/browse.ts        COLLECTIONS, presetFor, browseFilters (preset ∧ sheet ∧ Settings), sorts (pure, tested)
-src/lib/format.ts        formatNumber / formatDate / formatMinutes (EN/FR)
+src/lib/format.ts        formatNumber / formatDate / formatMinutes / formatDuration (EN/FR)
+src/lib/timers.ts        detectTimers (durations in a step), formatCountdown (pure, tested)
+src/lib/shopping.ts      groupShopping (aisle order), shoppingText (share) (pure, tested)
 assets/db/recipes.db     2,500-recipe SAMPLE (committed). Full DB is built in CI only.
 data-pipeline/      Python: builds recipes.db from the Food.com datasets (+ pytest)
 .github/workflows/  ci.yml (checks) · build-apps.yml (DB → APK + unsigned IPA → Release)

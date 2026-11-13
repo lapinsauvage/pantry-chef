@@ -43,6 +43,7 @@ function RootStack() {
         <Stack.Screen name="settings/basics" options={{ title: t.settings.basics }} />
         <Stack.Screen name="settings/diet" options={{ title: t.settings.dietAndAvoid }} />
         <Stack.Screen name="recipe/[id]" options={{ title: '' }} />
+        <Stack.Screen name="cook/[id]" options={{ presentation: 'fullScreenModal', headerShown: false }} />
         <Stack.Screen
           name="pantry"
           options={{

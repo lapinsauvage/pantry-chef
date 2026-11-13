@@ -10,10 +10,10 @@ A personal, offline cooking app for iPhone and Android:
   favourites and a step-by-step cooking mode.
 - English and French interface. Works without internet (except recipe photos).
 
-> Status: M3 done — "What can I cook?" (pick ingredients → ranked recipes), the recipe screen
-> (metric quantities, servings, what you're missing) and Browse (search as you type in English or
-> French, collections, courses, cuisines, filters, sorting), on top of M1 (tabs, English/French,
-> onboarding, settings). Next: favourites, shopping list and cooking mode — see `docs/SPEC.md`.
+> Status: M4 done — all features are in: "What can I cook?", recipe screen (metric, servings,
+> what you're missing), Browse (search in English or French, collections, filters), Favourites and
+> recently viewed, Shopping list, and Cooking mode with timers. Next (M5): polish, app icon, and
+> installing the built apps on both phones — see `docs/SPEC.md`.
 
 ## Get the app on your phone
 GitHub → **Actions** → **Build apps** → **Run workflow**, then download from **Releases**:

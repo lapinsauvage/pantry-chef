@@ -13,6 +13,8 @@ import {
   findByPantry,
   ftsQuery,
   ingredientsByName,
+  matchIngredient,
+  recipeCardsByIds,
   recipeIngredientIds,
   type RecipeFilters,
   search,
@@ -143,4 +145,20 @@ test('what can I cook: ranking and missing ingredients agree with the recipe lin
     assert.ok(r.missing! <= 2 && r.hits! >= 1);
     assert.equal(missingIds(lines.get(r.id)!, owned, staples).length, r.missing, `recipe ${r.id}`);
   }
+});
+
+test('cards by ids keep the given order and skip unknown ids', async () => {
+  const ids = (await browse(db, {}, 'popular', 3)).map((r) => r.id).reverse();
+  const cards = await recipeCardsByIds(db, [ids[0], 999999999, ids[1], ids[2]]);
+  assert.deepEqual(cards.map((c) => c.id), ids);
+  assert.deepEqual(await recipeCardsByIds(db, []), []);
+});
+
+test('typed shopping items match ingredients in English or French', async () => {
+  assert.equal((await matchIngredient(db, 'Oignon'))?.name, 'onion');
+  assert.equal((await matchIngredient(db, ' garlic '))?.name, 'garlic');
+  assert.equal((await matchIngredient(db, 'oeuf'))?.name, 'egg');
+  assert.equal((await matchIngredient(db, 'Sucre impalpable'))?.name, 'powdered sugar');
+  assert.equal(await matchIngredient(db, 'batteries'), null);
+  assert.equal(await matchIngredient(db, 'oign'), null); // prefixes don't count
 });

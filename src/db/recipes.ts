@@ -135,6 +135,17 @@ export async function findByPantry(db: SQLiteDatabase, q: PantryQuery): Promise<
   ]);
 }
 
+/** Cards for known recipe ids (favourites, history), in the order of `ids`; unknown ids are skipped. */
+export async function recipeCardsByIds(db: SQLiteDatabase, ids: readonly number[]): Promise<RecipeCard[]> {
+  if (!ids.length) return [];
+  const rows = await db.getAllAsync<RecipeCard>(
+    `SELECT ${CARD_COLUMNS} FROM recipes r WHERE r.id IN (${placeholders(ids.length)})`,
+    [...ids],
+  );
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  return ids.map((id) => byId.get(id)).filter((r): r is RecipeCard => r != null);
+}
+
 export type SortOrder = 'popular' | 'quick' | 'rating' | 'newest';
 const ORDER: Record<SortOrder, string> = {
   popular: 'r.score DESC',
@@ -311,6 +322,20 @@ export async function searchIngredients(db: SQLiteDatabase, text: string, limit 
      WHERE staple = 0 AND (search LIKE ? OR search LIKE ?)
      ORDER BY (search LIKE ?) DESC, recipes DESC LIMIT ?`,
     [`${t}%`, `% ${t}%`, `${t}%`, limit],
+  );
+}
+
+/**
+ * The ingredient a typed shopping item names exactly, in English or French, ignoring case and
+ * accents ("Oignon" → onion, "oeuf" → egg); null if none (then it's kept as free text).
+ */
+export async function matchIngredient(db: SQLiteDatabase, text: string): Promise<Ingredient | null> {
+  const wanted = searchWords(text).join(' ');
+  if (!wanted) return null;
+  const candidates = await searchIngredients(db, wanted, 20);
+  return (
+    candidates.find((c) => searchWords(c.name).join(' ') === wanted || (c.name_fr != null && searchWords(c.name_fr).join(' ') === wanted)) ??
+    null
   );
 }
 

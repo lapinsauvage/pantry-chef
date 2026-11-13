@@ -108,7 +108,9 @@ Missing or invalid values fall back to the defaults (metric, oven + stovetop + m
 
 `history` keeps the last 50 opened recipes (`recordView`). "Add missing to shopping list" inserts
 one `shopping_items` row per missing ingredient (text in the UI language, `ingredient_id`,
-`recipe_id`) and skips ingredients already on the list unchecked.
+`recipe_id`) and skips ingredients already on the list unchecked. Typed items get an
+`ingredient_id` when their text exactly names an ingredient (EN or FR, `matchIngredient`), else
+it stays null and the item is listed under "Other".
 
 ## Known limitations
 - Photos are loaded from Food.com's image CDN; some may disappear over time → show the course placeholder.

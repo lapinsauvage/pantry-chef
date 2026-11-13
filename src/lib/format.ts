@@ -36,3 +36,11 @@ export function formatMinutes(min: number | null | undefined, lang: Lang): strin
   const day = lang === 'fr' ? 'j' : 'd';
   return h ? `${d} ${day} ${h} h` : `${d} ${day}`;
 }
+
+/** Timer length: 30 → "30 s", 90 → "1 min 30 s", 1500 → "25 min", 5400 → "1 h 30". */
+export function formatDuration(seconds: number, lang: Lang): string {
+  const s = Math.round(seconds);
+  if (s < 60) return `${s} s`;
+  if (s < 3600 && s % 60) return `${Math.floor(s / 60)} min ${s % 60} s`;
+  return formatMinutes(Math.round(s / 60), lang);
+}

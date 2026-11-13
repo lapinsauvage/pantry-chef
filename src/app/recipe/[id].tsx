@@ -3,7 +3,7 @@
  * chosen units (✓ = you have it, tap to tick off), what's missing → shopping list, steps with
  * °C/cm, nutrition estimate, favourite, and the Food.com attribution link (always shown).
  */
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { Suspense, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -14,7 +14,6 @@ import { Message, PreparingRecipes } from '@/components/states';
 import { AppText, Button, ChipGroup, Stepper, Tag } from '@/components/ui';
 import { useRecipeDb } from '@/db/recipe-db';
 import { getRecipe, type RecipeDetail, stapleIds } from '@/db/recipes';
-import { addShoppingItems, recordView } from '@/db/user';
 import { ingredientName, useI18n } from '@/i18n';
 import { CHIPS, DIETS, DIFFICULTY, EQUIPMENT, sourceUrl } from '@/lib/constants';
 import { clampServings, lineStatus, missingIds } from '@/lib/cook';
@@ -22,8 +21,9 @@ import { formatMinutes, formatNumber } from '@/lib/format';
 import { hasBit } from '@/lib/settings';
 import { formatIngredient, metricizeText, scaleFactor } from '@/lib/units';
 import { useBasics } from '@/state/basics';
-import { toggleFavorite, useIsFavorite } from '@/state/favorites';
+import { recordRecipeView, toggleFavorite, useIsFavorite } from '@/state/favorites';
 import { usePantry } from '@/state/pantry';
+import { addToShoppingList } from '@/state/shopping';
 import { useSettings } from '@/state/settings';
 import { radius, space, typography, useColors } from '@/theme';
 
@@ -66,7 +66,7 @@ function RecipeLoader({ id }: { id: number }) {
     Promise.all([getRecipe(db, id), stapleIds(db)]).then(([recipe, staples]) => {
       if (!live) return;
       setState({ id, recipe, staples });
-      if (recipe) recordView(id);
+      if (recipe) recordRecipeView(id);
     });
     return () => {
       live = false;
@@ -108,7 +108,7 @@ function RecipeBody({ recipe, staples }: { recipe: RecipeDetail; staples: Readon
     });
 
   const addMissing = () =>
-    setAdded(addShoppingItems(missing.map((m, i) => ({ text: missingNames[i], ingredientId: m.id, recipeId: recipe.id }))));
+    setAdded(addToShoppingList(missing.map((m, i) => ({ text: missingNames[i], ingredientId: m.id, recipeId: recipe.id }))));
 
   const rating =
     recipe.rating != null
@@ -211,6 +211,13 @@ function RecipeBody({ recipe, staples }: { recipe: RecipeDetail; staples: Readon
             ) : null}
           </View>
         ) : null}
+
+        <Button
+          title={t.cooking.start}
+          onPress={() =>
+            router.push({ pathname: '/cook/[id]', params: { id: String(recipe.id), servings: String(servings) } })
+          }
+        />
 
         <View style={styles.block}>
           <AppText variant="heading" accessibilityRole="header">
