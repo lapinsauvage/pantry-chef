@@ -1,0 +1,57 @@
+# Translation test: translate ~200 popular recipes EN→FR with free open-source models,
+# measure the speed and print before/after examples (job summary, log and artifact).
+# Runs when these files change on a branch, or by hand once the workflow is on main.
+name: Translation test
+
+on:
+  workflow_dispatch:
+    inputs:
+      recipes:
+        description: How many of the most popular recipes
+        default: "200"
+  push:
+    branches-ignore: [main]
+    paths:
+      - .github/workflows/translate-test.yml
+      - data-pipeline/scripts/translate_sample.py
+      - data-pipeline/scripts/translation_sample.ts
+
+jobs:
+  translate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      RECIPES: ${{ inputs.recipes || '200' }}
+      MODELS: Helsinki-NLP/opus-mt-en-fr Helsinki-NLP/opus-mt-tc-big-en-fr
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install translation tools (CPU only)
+        run: |
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install ctranslate2 sentencepiece sacremoses "transformers<5"
+      - name: Export the most popular recipes (metric English)
+        run: |
+          mkdir -p build
+          node --experimental-strip-types data-pipeline/scripts/translation_sample.ts assets/db/recipes.db "$RECIPES" > build/sample.json
+      - name: Convert models to CTranslate2 (int8)
+        run: |
+          for m in $MODELS; do
+            ct2-transformers-converter --model "$m" --output_dir "models/${m##*/}" --quantization int8
+          done
+      - name: Translate and measure
+        run: |
+          args=()
+          for m in $MODELS; do args+=(--model "$m=models/${m##*/}"); done
+          python data-pipeline/scripts/translate_sample.py build/sample.json "${args[@]}" --report build/translation-report.md
+          cat build/translation-report.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: translation-test
+          path: build/translation-report.md*
+          retention-days: 14
