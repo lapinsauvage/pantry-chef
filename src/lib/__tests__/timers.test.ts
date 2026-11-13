@@ -55,3 +55,17 @@ test('countdown and labels', () => {
   assert.equal(formatDuration(1500, 'en'), '25 min');
   assert.equal(formatDuration(5400, 'fr'), '1 h 30');
 });
+
+test('French durations (machine-translated steps)', () => {
+  assert.deepEqual(secs('Cuire au four 25 à 30 minutes.'), [1500]);
+  assert.deepEqual(secs('Laisser mijoter 1 h 30.'), [5400]);
+  assert.deepEqual(secs('Cuire 1 heure et demie à feu doux.'), [5400]);
+  assert.deepEqual(secs('Cuire 2 heures 15 minutes.'), [8100]);
+  assert.deepEqual(secs('Réfrigérer une demi-heure, puis cuire 10 min.'), [1800, 600]);
+  assert.deepEqual(secs('Laisser reposer un quart d’heure.'), [900]);
+  assert.deepEqual(secs('Faire bouillir deux minutes.'), [120]);
+  assert.deepEqual(secs('Cuire 1,5 heure.'), [5400]);
+  assert.deepEqual(secs('Cuire 10-15 min à 180 °C.'), [600]);
+  assert.deepEqual(secs('Ajouter 2 hachées et 3 heurts.'), []);
+  assert.equal(detectTimers('Cuire 25 à 30 minutes.')[0].text, '25 à 30 minutes');
+});

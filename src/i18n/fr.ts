@@ -82,6 +82,9 @@ export const fr: Translations = {
   },
   recipe: {
     notFound: 'Cette recette est introuvable.',
+    machineTranslated: 'Traduction automatique',
+    showOriginal: 'Voir l’original (anglais)',
+    showTranslation: 'Voir la traduction',
     total: 'Total',
     prep: 'Préparation',
     cook: 'Cuisson',

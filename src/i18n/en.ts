@@ -80,6 +80,9 @@ export const en = {
   },
   recipe: {
     notFound: 'This recipe could not be found.',
+    machineTranslated: 'Machine translation',
+    showOriginal: 'Show the original (English)',
+    showTranslation: 'Show the translation',
     total: 'Total',
     prep: 'Prep',
     cook: 'Cook',

@@ -28,6 +28,7 @@ const ICONS = {
   external: { ios: 'safari', android: 'open_in_new' },
   cartAdd: { ios: 'cart.badge.plus', android: 'add_shopping_cart' },
   share: { ios: 'square.and.arrow.up', android: 'share' },
+  translate: { ios: 'character.bubble', android: 'translate' },
 } satisfies Record<string, { ios: SFSymbol; android: AndroidSymbol }>;
 
 export type IconName = keyof typeof ICONS;

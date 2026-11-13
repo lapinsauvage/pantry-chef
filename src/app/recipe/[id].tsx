@@ -18,13 +18,15 @@ import { ingredientName, useI18n } from '@/i18n';
 import { CHIPS, DIETS, DIFFICULTY, EQUIPMENT, sourceUrl } from '@/lib/constants';
 import { clampServings, lineStatus, missingIds } from '@/lib/cook';
 import { formatMinutes, formatNumber } from '@/lib/format';
+import { frenchTextsFit, hasFrenchTexts, lineFr, shownSteps } from '@/lib/recipe-text';
 import { hasBit } from '@/lib/settings';
-import { formatIngredient, metricizeText, scaleFactor } from '@/lib/units';
+import { formatIngredient, scaleFactor } from '@/lib/units';
 import { useBasics } from '@/state/basics';
 import { recordRecipeView, toggleFavorite, useIsFavorite } from '@/state/favorites';
 import { usePantry } from '@/state/pantry';
 import { addToShoppingList } from '@/state/shopping';
 import { useSettings } from '@/state/settings';
+import { setShowOriginal, useShowOriginal } from '@/state/translation';
 import { radius, space, typography, useColors } from '@/theme';
 
 export default function RecipeScreen() {
@@ -81,6 +83,11 @@ function RecipeBody({ recipe, staples }: { recipe: RecipeDetail; staples: Readon
   const { t, lang } = useI18n();
   const colors = useColors();
   const { units } = useSettings();
+  const showOriginal = useShowOriginal();
+  // Machine-translated French (French + metric only), with a switch back to the original English
+  const translated = frenchTextsFit(lang, units) && hasFrenchTexts(recipe);
+  const french = translated && !showOriginal;
+  const steps = shownSteps(recipe, french, units, lang);
   const pantry = usePantry();
   const basics = useBasics();
   const [servings, setServings] = useState(recipe.servings ?? 1);
@@ -136,8 +143,26 @@ function RecipeBody({ recipe, staples }: { recipe: RecipeDetail; staples: Readon
       <View style={styles.content}>
         <View style={styles.block}>
           <AppText variant="title" accessibilityRole="header">
-            {recipe.name}
+            {(french && recipe.name_fr) || recipe.name}
           </AppText>
+          {translated ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityHint={french ? t.recipe.machineTranslated : undefined}
+              onPress={() => setShowOriginal(!showOriginal)}
+              hitSlop={8}
+              style={({ pressed }) => [styles.inline, styles.link, pressed && { opacity: 0.6 }]}>
+              <Icon name="translate" size={16} color={colors.primary} />
+              {french ? (
+                <AppText variant="caption" muted>
+                  {`${t.recipe.machineTranslated} ·`}
+                </AppText>
+              ) : null}
+              <AppText variant="caption" color={colors.primary}>
+                {french ? t.recipe.showOriginal : t.recipe.showTranslation}
+              </AppText>
+            </Pressable>
+          ) : null}
           <View style={styles.inline} accessible accessibilityLabel={rating ? t.recipe.rating(rating.stars, rating.reviews) : undefined}>
             {rating ? (
               <>
@@ -243,7 +268,8 @@ function RecipeBody({ recipe, staples }: { recipe: RecipeDetail; staples: Readon
           </AppText>
           <View style={[styles.card, { backgroundColor: colors.surface }]}>
             {recipe.ingredients.map((line, i) => {
-              const f = formatIngredient(line, { factor, system: units, lang, ingredient: line.canonical });
+              const textFr = lineFr(recipe, i, french);
+              const f = formatIngredient(line, { factor, system: units, lang, ingredient: line.canonical, textFr });
               const status = lineStatus(line.ingredientId, owned, staples);
               const done = ticked.has(i);
               const statusLabel = status === 'owned' ? t.recipe.have : status === 'missing' ? t.recipe.missingItem : '';
@@ -270,7 +296,7 @@ function RecipeBody({ recipe, staples }: { recipe: RecipeDetail; staples: Readon
                       {f.text}
                       {f.note ? <Text style={{ color: colors.textMuted }}>{`, ${f.note}`}</Text> : null}
                     </Text>
-                    {lang === 'fr' && line.canonical_fr ? (
+                    {lang === 'fr' && line.canonical_fr && !textFr ? (
                       <AppText variant="caption" muted>
                         {line.canonical_fr}
                       </AppText>
@@ -302,15 +328,15 @@ function RecipeBody({ recipe, staples }: { recipe: RecipeDetail; staples: Readon
           <AppText variant="heading" accessibilityRole="header">
             {t.recipe.steps}
           </AppText>
-          {recipe.steps.map((step, i) => (
-            <View key={i} style={styles.step} accessible accessibilityLabel={`${t.recipe.step(i + 1)}. ${metricizeText(step, units, lang)}`}>
+          {steps.map((step, i) => (
+            <View key={i} style={styles.step} accessible accessibilityLabel={`${t.recipe.step(i + 1)}. ${step}`}>
               <View style={[styles.stepNumber, { backgroundColor: colors.primarySoft }]}>
                 <AppText variant="label" color={colors.onPrimarySoft}>
                   {String(i + 1)}
                 </AppText>
               </View>
               <AppText variant="body" style={styles.flex}>
-                {metricizeText(step, units, lang)}
+                {step}
               </AppText>
             </View>
           ))}

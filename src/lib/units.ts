@@ -83,6 +83,31 @@ const UNIT_LABEL: Record<string, [singular: string, plural: string]> = {
   fillet: ['fillet', 'fillets'], whole: ['whole', 'whole'],
 };
 
+/** French unit words, for ingredient lines shown with their machine translation ('' = no word). */
+const UNIT_LABEL_FR: Record<string, [singular: string, plural: string]> = {
+  cup: ['tasse', 'tasses'], tbsp: ['c. à soupe', 'c. à soupe'], tsp: ['c. à café', 'c. à café'],
+  floz: ['fl oz', 'fl oz'], oz: ['oz', 'oz'], lb: ['lb', 'lb'], pint: ['pinte', 'pintes'],
+  quart: ['quart', 'quarts'], gallon: ['gallon', 'gallons'], inch: ['pouce', 'pouces'],
+  pinch: ['pincée', 'pincées'], dash: ['trait', 'traits'], clove: ['gousse', 'gousses'],
+  can: ['boîte', 'boîtes'], package: ['paquet', 'paquets'], jar: ['bocal', 'bocaux'],
+  bottle: ['bouteille', 'bouteilles'], box: ['boîte', 'boîtes'], stick: ['bâton', 'bâtons'],
+  slice: ['tranche', 'tranches'], piece: ['morceau', 'morceaux'], bunch: ['botte', 'bottes'],
+  head: ['tête', 'têtes'], sprig: ['brin', 'brins'], stalk: ['branche', 'branches'],
+  drop: ['goutte', 'gouttes'], handful: ['poignée', 'poignées'], container: ['pot', 'pots'],
+  bag: ['sachet', 'sachets'], loaf: ['pain', 'pains'], fillet: ['filet', 'filets'], whole: ['', ''],
+};
+
+// "h" words that take "de" (h aspiré): de haricots, de hachis…
+const H_ASPIRE = /^(?:hach|haricot|homard|hareng|hampe|houblon|hot|hamburger|halloumi|haddock|hors)/i;
+
+/** French "de"/"d’" before an ingredient after a unit word: "farine" → "de farine", "huile" → "d’huile". */
+export function frenchOf(text: string): string {
+  const t = text.trim();
+  if (/^(?:de |d[’']|du |des )/i.test(t)) return t;
+  if (/^[aeiouâàäéèêëîïôöûùüœæ]/i.test(t) || (/^h/i.test(t) && !H_ASPIRE.test(t))) return `d’${t}`;
+  return `de ${t}`;
+}
+
 export interface Quantity {
   qmin: number | null;
   qmax: number | null;
@@ -174,6 +199,11 @@ export interface FormatOptions {
   lang?: 'en' | 'fr';
   /** Canonical ingredient name, enables grams-per-cup conversion. */
   ingredient?: string | null;
+  /**
+   * French "text, note" of the line (machine translation, already metric): the line is then shown
+   * in French — French unit words, "de" before the text, no separate note.
+   */
+  textFr?: string | null;
 }
 
 /** "1 (14 oz) can diced tomatoes, briefly drained" -> metric "1 (400 g) can diced tomatoes …" */
@@ -191,6 +221,8 @@ export function formatIngredient(line: IngredientLine, opts: FormatOptions = {})
     unit: line.unit,
   };
   q = convertQuantity(q, system, opts.ingredient);
+  const fr = Boolean(opts.textFr);
+  const label = (unit: string, n: number) => unitLabel(unit, n, fr ? 'fr' : 'en');
   const num = (n: number) => (system === 'us' ? formatFraction(n) : formatMetric(n, q.unit, lang));
   let quantity = '';
   if (q.qmin != null) {
@@ -200,21 +232,21 @@ export function formatIngredient(line: IngredientLine, opts: FormatOptions = {})
   if (line.pkgQty != null && line.pkgUnit) {
     const pkg = convertQuantity({ qmin: line.pkgQty, qmax: null, unit: line.pkgUnit }, system);
     const pkgNum = system === 'us' ? formatFraction(pkg.qmin!) : formatMetric(pkg.qmin!, pkg.unit, lang);
-    quantity += `${quantity ? ' ' : ''}(${pkgNum} ${unitLabel(pkg.unit!, pkg.qmin!)})`;
+    quantity += `${quantity ? ' ' : ''}(${pkgNum} ${label(pkg.unit!, pkg.qmin!)})`;
   }
-  if (q.unit) {
-    const n = q.qmax ?? q.qmin ?? 1;
-    quantity += `${quantity ? ' ' : ''}${unitLabel(q.unit, n)}`;
-  }
+  const unitWord = q.unit ? label(q.unit, q.qmax ?? q.qmin ?? 1) : '';
+  if (unitWord) quantity += `${quantity ? ' ' : ''}${unitWord}`;
+  if (fr) return { quantity: quantity.trim(), text: unitWord ? frenchOf(opts.textFr!) : opts.textFr!.trim(), note: '' };
   // Free text in the name/note ("1/2-inch thick", "about 8 oz") follows the unit system too.
   const free = (t: string) => (system === 'metric' && t ? metricizeText(t, 'metric', lang) : t);
   return { quantity: quantity.trim(), text: free(line.text), note: free(line.note) };
 }
 
-export function unitLabel(unit: string, n: number): string {
-  const l = UNIT_LABEL[unit];
+export function unitLabel(unit: string, n: number, lang: 'en' | 'fr' = 'en'): string {
+  const l = (lang === 'fr' ? UNIT_LABEL_FR : UNIT_LABEL)[unit];
   if (!l) return unit;
-  return n > 1 + 1e-9 ? l[1] : l[0];
+  // English plural above 1 ("1.5 cups"); French from 2 ("1,5 tasse", "2 tasses")
+  return n > (lang === 'fr' ? 2 - 1e-9 : 1 + 1e-9) ? l[1] : l[0];
 }
 
 // ---------------------------------------------------------------------------

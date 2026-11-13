@@ -13,6 +13,7 @@ import { useRecipeDb } from '@/db/recipe-db';
 import { ingredientsByIds, matchIngredient, recipeCardsByIds } from '@/db/recipes';
 import { useI18n } from '@/i18n';
 import { INGREDIENT_CATEGORIES } from '@/lib/constants';
+import { recipeTitle } from '@/lib/recipe-text';
 import { groupShopping, type ShoppingItem, shoppingText } from '@/lib/shopping';
 import {
   addToShoppingList,
@@ -21,6 +22,7 @@ import {
   toggleShoppingItem,
   useShoppingItems,
 } from '@/state/shopping';
+import { useSettings } from '@/state/settings';
 import { radius, space, TOUCH, typography, useColors } from '@/theme';
 
 export default function ShoppingScreen() {
@@ -36,6 +38,8 @@ export default function ShoppingScreen() {
 /** Aisle of each linked ingredient and name of each linked recipe (looked up in recipes.db). */
 function useItemDetails(items: readonly ShoppingItem[]) {
   const db = useRecipeDb();
+  const { lang } = useI18n();
+  const { units } = useSettings();
   const [details, setDetails] = useState<{ categories: Map<number, string>; recipes: Map<number, string> }>({
     categories: new Map(),
     recipes: new Map(),
@@ -48,14 +52,14 @@ function useItemDetails(items: readonly ShoppingItem[]) {
       if (live) {
         setDetails({
           categories: new Map(ings.map((i) => [i.id, i.category])),
-          recipes: new Map(recipes.map((r) => [r.id, r.name])),
+          recipes: new Map(recipes.map((r) => [r.id, recipeTitle(r, lang, units)])),
         });
       }
     });
     return () => {
       live = false;
     };
-  }, [db, items]);
+  }, [db, items, lang, units]);
   return details;
 }
 

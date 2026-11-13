@@ -7,10 +7,13 @@ import {
   fToC,
   formatFraction,
   formatIngredient,
+  frenchOf,
   metricizeText,
   parseIngredientTuple,
   parseAmount,
   scaleFactor,
+  type IngredientTuple,
+  unitLabel,
 } from '../units.ts';
 
 test('fractions', () => {
@@ -151,4 +154,43 @@ test('ingredient name and note follow the unit system', () => {
   assert.equal(formatIngredient(bread, { system: 'us' }).note, 'sliced 1/4-1/2 inch thick');
   const onion = parseIngredientTuple([1, null, null, null, null, 'onion', 'chopped, about 1 cup']);
   assert.equal(formatIngredient(onion).note, 'chopped, about 1 cup');
+});
+
+test('French "de"/"d’" before an ingredient after a unit word', () => {
+  assert.equal(frenchOf('farine'), 'de farine');
+  assert.equal(frenchOf('huile d’olive'), 'd’huile d’olive');
+  assert.equal(frenchOf('œufs battus'), 'd’œufs battus');
+  assert.equal(frenchOf('haricots verts'), 'de haricots verts'); // h aspiré
+  assert.equal(frenchOf('herbes fraîches'), 'd’herbes fraîches');
+  assert.equal(frenchOf('yaourt nature'), 'de yaourt nature');
+  assert.equal(frenchOf('du beurre'), 'du beurre');
+});
+
+test('ingredient line with its French translation: French unit words, "de", no separate note', () => {
+  const line = (t: IngredientTuple) => parseIngredientTuple(t);
+  const fr = (t: IngredientTuple, textFr: string, ingredient?: string) =>
+    formatIngredient(line(t), { system: 'metric', lang: 'fr', textFr, ingredient });
+  assert.deepEqual(fr([2, null, 'tbsp', null, null, 'olive oil'], 'huile d’olive'), {
+    quantity: '2 c. à soupe',
+    text: 'd’huile d’olive',
+    note: '',
+  });
+  assert.deepEqual(fr([3, null, 'clove', null, null, 'garlic', 'minced'], 'ail, haché'), {
+    quantity: '3 gousses',
+    text: 'd’ail, haché',
+    note: '',
+  });
+  assert.deepEqual(fr([1, null, 'cup', null, null, 'flour'], 'farine', 'flour'), { quantity: '125 g', text: 'de farine', note: '' });
+  assert.deepEqual(fr([2, null, null, null, null, 'eggs'], 'œufs'), { quantity: '2', text: 'œufs', note: '' });
+  assert.deepEqual(fr([1, null, 'can', 14, 'oz', 'diced tomatoes'], 'tomates en dés'), {
+    quantity: '1 (395 g) boîte',
+    text: 'de tomates en dés',
+    note: '',
+  });
+  assert.equal(fr([1, null, 'whole', null, null, 'chicken'], 'poulet').text, 'poulet'); // no word for "whole"
+  assert.equal(fr([1.5, null, 'cup', null, null, 'milk'], 'lait', 'milk').quantity, '355 ml');
+  assert.equal(unitLabel('cup', 1.5, 'fr'), 'tasse');
+  assert.equal(unitLabel('cup', 2, 'fr'), 'tasses');
+  // without a translation the line stays English, as before
+  assert.equal(formatIngredient(line([2, null, 'tbsp', null, null, 'olive oil']), { lang: 'fr' }).quantity, '2 tbsp');
 });

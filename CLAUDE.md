@@ -38,8 +38,13 @@ milestone), `docs/DATA.md` (database schema and codes), `docs/BUILD.md` (builds,
   Android cache copy deleted after import, `PRAGMA mmap_size`, 300 px list thumbnails, per-route
   error screens. Remaining: build with "Build apps" and test on both phones (checklist in
   docs/BUILD.md), then fix what the phones show.
-- **Next: French recipes.** A free self-hosted EN↔FR translator (Opus-MT on GitHub Actions) is specified
-  in `docs/TRANSLATOR.md`, not built yet. The speed/quality test is `.github/workflows/translate-test.yml`.
+- **French recipes (tryout):** free self-hosted EN→FR machine translation (Opus-MT tc-big via
+  CTranslate2 on a GitHub runner, spec `docs/TRANSLATOR.md`): `pantry_pipeline/machine_translation.py`
+  + Belgian `vocab/glossary_fr.json`, schema 2 French columns (`name_fr`, `steps_fr`, `ingredients_fr`,
+  `recipe_fts_fr`), `translate.yml` translates the committed 2,500-recipe sample and commits it back,
+  "Build apps" with database=sample → release `tryout`. The app shows French in French + metric
+  (`src/lib/recipe-text.ts`, toggle "Voir l’original", French unit words, French timers, French title
+  search). Not done yet: the full database (T4 in TRANSLATOR.md), the FR↔EN text tool (T3).
 
 ## Map
 ```
@@ -54,7 +59,7 @@ src/hooks/          use-ingredient-names.ts (French names for pantry/basics), us
                     (debounced first page, infinite scroll, stale responses dropped — Cook + Browse)
 src/i18n/           en.ts + fr.ts (typed dictionaries) · index.tsx (useI18n → { t, lang })
 src/state/          settings.ts (useSettings/updateSettings), basics.ts, pantry.ts, favorites.ts (+ history),
-                    shopping.ts, cook.ts /
+                    shopping.ts, cook.ts, translation.ts (show original) /
                     browse.ts (tab options, in memory), reset.ts — small stores over user.db
 src/theme/          palette (light/dark), useColors, spacing, typography
 src/db/recipe-db.ts first-launch import of recipes.db; useRecipeDb() suspends until ready
@@ -69,9 +74,12 @@ src/lib/browse.ts        COLLECTIONS, presetFor, browseFilters (preset ∧ sheet
 src/lib/format.ts        formatNumber / formatDate / formatMinutes / formatDuration (EN/FR)
 src/lib/timers.ts        detectTimers (durations in a step), formatCountdown (pure, tested)
 src/lib/shopping.ts      groupShopping (aisle order), shoppingText (share) (pure, tested)
+src/lib/recipe-text.ts   French or English recipe texts (French + metric only), recipeTitle, shownSteps (pure, tested)
 assets/db/recipes.db     2,500-recipe SAMPLE (committed). Full DB is built in CI only.
-data-pipeline/      Python: builds recipes.db from the Food.com datasets (+ pytest)
-.github/workflows/  ci.yml (checks) · build-apps.yml (DB → APK + unsigned IPA → Release)
+data-pipeline/      Python: builds recipes.db from the Food.com datasets (+ pytest); machine_translation.py,
+                    add_translations.py, translations/sample-fr.jsonl.gz (sample memory, written by CI)
+.github/workflows/  ci.yml (checks) · build-apps.yml (DB → APK + unsigned IPA → Release; database=sample →
+                    'tryout') · translate.yml (sample EN→FR, commits back) · translate-test.yml (model test)
 ```
 
 ## Commands
@@ -132,5 +140,8 @@ queries get a case in `src/lib/__tests__/queries.test.ts`, which runs the real S
   `recipes.ingredients` (`recipeIngredientIds`) + `missingIds()`; don't query it by `recipe_id`.
 - Build the full DB locally for benchmarks: `npm run data:fetch && npm run db:full` → `build/recipes.db`.
 - FTS5 has no implicit AND before a bracketed group: `ftsQuery` joins terms with explicit `AND`.
+- Recipe French texts: never edit `assets/db/recipes.db` by hand; after `npm run db:sample` re-apply
+  `add_translations` with `data-pipeline/translations/sample-fr.jsonl.gz` (docs/DATA.md). Models can't
+  be downloaded in the cloud dev container (no huggingface.co) — translation runs on GitHub only.
 - Typed routes (`.expo/types/router.d.ts`) only exist after `npx expo start` ran once; CI typechecks
   without them, so run `npm run typecheck` both ways after adding routes.

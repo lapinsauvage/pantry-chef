@@ -31,6 +31,8 @@ export interface RecipeFilters {
 export interface RecipeCard {
   id: number;
   name: string;
+  /** Machine-translated French name (null when not translated); see src/lib/recipe-text.ts. */
+  name_fr: string | null;
   image: string | null;
   total_min: number | null;
   rating: number | null;
@@ -45,7 +47,7 @@ export interface RecipeCard {
 }
 
 const CARD_COLUMNS =
-  'r.id, r.name, r.image, r.total_min, r.rating, r.reviews, r.course, r.cuisine, r.difficulty, r.kcal';
+  'r.id, r.name, r.name_fr, r.image, r.total_min, r.rating, r.reviews, r.course, r.cuisine, r.difficulty, r.kcal';
 
 function placeholders(n: number): string {
   return Array.from({ length: n }, () => '?').join(',');
@@ -222,7 +224,10 @@ export async function searchAlternatives(db: SQLiteDatabase, text: string): Prom
 
 export type SearchSort = SortOrder | 'relevance';
 
-/** Full-text search on recipe name (weighted), ingredients and keywords; English or French words. */
+/**
+ * Full-text search on recipe name (weighted), ingredients and keywords — English or French words —
+ * plus the French recipe names (recipe_fts_fr) where the database has them.
+ */
 export async function search(
   db: SQLiteDatabase,
   text: string,
@@ -234,13 +239,18 @@ export async function search(
   const match = ftsQuery(text, await searchAlternatives(db, text));
   if (!match) return browse(db, filters, sort === 'relevance' ? 'popular' : sort, limit, offset);
   const f = filterSql(filters);
-  const order = sort === 'relevance' ? 'bm25(recipe_fts, 10.0, 2.0, 1.0) - r.score * 0.5' : ORDER[sort];
+  const order = sort === 'relevance' ? 'MIN(m.rank) - r.score * 0.5' : ORDER[sort];
   return db.getAllAsync<RecipeCard>(
-    `SELECT ${CARD_COLUMNS} FROM recipe_fts JOIN recipes r ON r.id = recipe_fts.rowid
-     WHERE recipe_fts MATCH ?${f.sql}
+    `SELECT ${CARD_COLUMNS} FROM (
+       SELECT rowid AS id, bm25(recipe_fts, 10.0, 2.0, 1.0) AS rank FROM recipe_fts WHERE recipe_fts MATCH ?
+       UNION ALL
+       SELECT rowid AS id, bm25(recipe_fts_fr) * 10.0 AS rank FROM recipe_fts_fr WHERE recipe_fts_fr MATCH ?
+     ) m JOIN recipes r ON r.id = m.id
+     WHERE 1=1${f.sql}
+     GROUP BY r.id
      ORDER BY ${order}
      LIMIT ? OFFSET ?`,
-    [match, ...f.params, limit, offset],
+    [match, ftsQuery(text) ?? match, ...f.params, limit, offset],
   );
 }
 
@@ -260,6 +270,10 @@ export interface RecipeDetail extends RecipeCard {
   chips: string[];
   steps: string[];
   ingredients: (IngredientLine & { canonical: string | null; canonical_fr: string | null })[];
+  /** Machine translation, same length as `steps`; null entries (or null) = not translated. */
+  steps_fr: (string | null)[] | null;
+  /** Machine translation of each ingredient line's "text, note", same length as `ingredients`. */
+  ingredients_fr: (string | null)[] | null;
 }
 
 export async function getRecipe(db: SQLiteDatabase, id: number): Promise<RecipeDetail | null> {
@@ -290,6 +304,8 @@ export async function getRecipe(db: SQLiteDatabase, id: number): Promise<RecipeD
     fat: row.fat as number | null,
     chips: JSON.parse(row.chips as string),
     steps: JSON.parse(row.steps as string),
+    steps_fr: row.steps_fr ? JSON.parse(row.steps_fr as string) : null,
+    ingredients_fr: row.ingredients_fr ? JSON.parse(row.ingredients_fr as string) : null,
     ingredients: lines.map((l) => ({
       ...l,
       canonical: l.ingredientId != null ? byId.get(l.ingredientId)?.name ?? null : null,

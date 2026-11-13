@@ -1,5 +1,12 @@
 # Free EN↔FR translator: build instructions
 
+> **Status (13 Nov 2026):** the tryout part is built — T1 (library, glossary, checks, tests), the
+> pipeline/schema part of T5 (schema 2, `add_translations.py`, `build_db --translations`), the app
+> part of T6, and a single-job `translate.yml` that translates the committed 2,500-recipe sample and
+> commits it back (memory: `data-pipeline/translations/sample-fr.jsonl.gz`, not a release asset yet).
+> Still to do: T2 (beam/greedy comparison), T3 (FR↔EN text tool), T4 (sharded full-DB run + release
+> asset + `build-apps.yml` download), T7 for the full app.
+
 Spec for building Pantry Chef's own free English↔French translator. Written on 13 Nov 2026 by the
 session that built M0–M5. The same text, with a drawn architecture diagram, is in the user's Claude Doc
 "Pantry Chef — free EN↔FR translator: build instructions".

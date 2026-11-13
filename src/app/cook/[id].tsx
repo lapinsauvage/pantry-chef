@@ -29,9 +29,11 @@ import { useRecipeDb } from '@/db/recipe-db';
 import { getRecipe, type RecipeDetail } from '@/db/recipes';
 import { useI18n } from '@/i18n';
 import { formatDuration } from '@/lib/format';
+import { frenchTextsFit, hasFrenchTexts, lineFr, shownSteps } from '@/lib/recipe-text';
 import { detectTimers, formatCountdown } from '@/lib/timers';
-import { formatIngredient, metricizeText, scaleFactor } from '@/lib/units';
+import { formatIngredient, scaleFactor } from '@/lib/units';
 import { useSettings } from '@/state/settings';
+import { useShowOriginal } from '@/state/translation';
 import { radius, space, typography, useColors } from '@/theme';
 
 export default function CookingScreen() {
@@ -118,8 +120,11 @@ function Cooking({ recipe, servings }: { recipe: RecipeDetail; servings: number 
   const [index, setIndex] = useState(0);
   const [showIngredients, setShowIngredients] = useState(false);
   const timers = useTimers(t.cooking.timeUp);
+  // Same language as the recipe screen (its "show the original" switch applies here too)
+  const showOriginal = useShowOriginal();
+  const french = frenchTextsFit(lang, units) && hasFrenchTexts(recipe) && !showOriginal;
 
-  const steps = recipe.steps.map((s) => metricizeText(s, units, lang));
+  const steps = shownSteps(recipe, french, units, lang);
   const last = index === steps.length - 1;
   const go = (i: number) => {
     const next = Math.max(0, Math.min(steps.length - 1, i));
@@ -207,7 +212,13 @@ function Cooking({ recipe, servings }: { recipe: RecipeDetail; servings: number 
         <Button title={last ? t.cooking.done : t.cooking.next} onPress={() => (last ? router.back() : go(index + 1))} style={styles.flex} />
       </View>
 
-      <IngredientsSheet recipe={recipe} servings={servings} visible={showIngredients} onClose={() => setShowIngredients(false)} />
+      <IngredientsSheet
+        recipe={recipe}
+        servings={servings}
+        french={french}
+        visible={showIngredients}
+        onClose={() => setShowIngredients(false)}
+      />
     </View>
   );
 }
@@ -215,11 +226,13 @@ function Cooking({ recipe, servings }: { recipe: RecipeDetail; servings: number 
 function IngredientsSheet({
   recipe,
   servings,
+  french,
   visible,
   onClose,
 }: {
   recipe: RecipeDetail;
   servings: number;
+  french: boolean;
   visible: boolean;
   onClose: () => void;
 }) {
@@ -238,7 +251,13 @@ function IngredientsSheet({
         </View>
         <ScrollView contentContainerStyle={styles.sheetList}>
           {recipe.ingredients.map((line, i) => {
-            const f = formatIngredient(line, { factor, system: units, lang, ingredient: line.canonical });
+            const f = formatIngredient(line, {
+              factor,
+              system: units,
+              lang,
+              ingredient: line.canonical,
+              textFr: lineFr(recipe, i, french),
+            });
             return (
               <Text key={i} style={[styles.sheetLine, { color: colors.text }]}>
                 {f.quantity ? <Text style={styles.bold}>{`${f.quantity} `}</Text> : null}

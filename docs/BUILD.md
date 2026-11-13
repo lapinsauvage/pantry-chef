@@ -26,6 +26,14 @@ package in `node_modules/expo/bundledNativeModules.json` with `npm install <pkg>
    - iOS: `expo prebuild` + `xcodebuild archive` without code signing → **PantryChef-<version>-unsigned.ipa**,
    - publishes both on the **Releases** page (tag `latest`; pushing a tag `v1.0.0` makes a versioned release).
 
+### Quick tryout with French recipes (database = sample)
+**Run workflow** with *platforms* `android` and *database* `sample`: the APK uses the committed
+2,500 most popular recipes, whose names, ingredient lines and steps are machine-translated to
+French (`.github/workflows/translate.yml`, see docs/TRANSLATOR.md). About 20 Linux minutes, a
+~35 MB APK, published under the separate pre-release **tryout** — the `latest` full builds stay.
+Installing it over the full app keeps your settings and lists; favourites that aren't among the
+2,500 stay hidden until the full app is installed again.
+
 ### Free-minutes budget (private repo)
 Private repos get 2,000 included minutes per month on the Free plan, and macOS minutes count
 **10×** — about 200 macOS minutes. An iOS build takes roughly 30–40 macOS minutes, so plan
@@ -79,9 +87,14 @@ Check these on each phone and note anything odd (a screenshot helps):
 5. **Cooking mode:** the screen stays on; swipe between steps; tap a ⏱ timer, change step,
    the countdown keeps going and the phone vibrates at zero.
 6. **Browse:** typing shows results as you type (try "poulet riz"), collections, filters, sort.
-7. **Shopping list:** items grouped by aisle, tick, "Clear checked", Share → WhatsApp/Messages.
-8. **Offline:** turn on airplane mode — everything works except photos.
-9. **Dark mode** and **large text** (phone settings): everything readable, nothing cut off.
+   French titles are found too (try "tarte").
+7. **French recipes** (French + metric): names, ingredient lines ("2 c. à soupe d’huile d’olive")
+   and steps in French, "Traduction automatique · Voir l’original (anglais)" switches to English
+   and back (cooking mode follows), timers appear on French steps ("cuire 25 minutes"); with US
+   units the recipe text is English. Note odd translations (recipe + sentence) for the glossary.
+8. **Shopping list:** items grouped by aisle, tick, "Clear checked", Share → WhatsApp/Messages.
+9. **Offline:** turn on airplane mode — everything works except photos.
+10. **Dark mode** and **large text** (phone settings): everything readable, nothing cut off.
 
 ## Updating the recipe data
 Change the pipeline (with tests), push, run **Build apps**. The new database gets a new

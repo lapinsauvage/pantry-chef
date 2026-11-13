@@ -8,6 +8,8 @@ import type { RecipeCard } from '@/db/recipes';
 import { useI18n } from '@/i18n';
 import { DIFFICULTY, imageUrl } from '@/lib/constants';
 import { formatMinutes, formatNumber } from '@/lib/format';
+import { recipeTitle } from '@/lib/recipe-text';
+import { useSettings } from '@/state/settings';
 import { radius, space, useColors } from '@/theme';
 
 import { Icon } from './icon';
@@ -69,7 +71,9 @@ export interface RecipeResult extends RecipeCard {
 
 function RecipeRowInner({ recipe }: { recipe: RecipeResult }) {
   const { t, lang } = useI18n();
+  const { units } = useSettings();
   const colors = useColors();
+  const title = recipeTitle(recipe, lang, units);
   const meta = [
     formatMinutes(recipe.total_min, lang),
     recipe.rating != null ? `★ ${formatNumber(recipe.rating, lang, 1)}` : null,
@@ -93,7 +97,7 @@ function RecipeRowInner({ recipe }: { recipe: RecipeResult }) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={[recipe.name, meta.join(', '), badge?.text, uses].filter(Boolean).join('. ')}
+      accessibilityLabel={[title, meta.join(', '), badge?.text, uses].filter(Boolean).join('. ')}
       onPress={() => router.push(`/recipe/${recipe.id}`)}
       android_ripple={{ color: colors.border }}
       style={({ pressed }) => [
@@ -106,7 +110,7 @@ function RecipeRowInner({ recipe }: { recipe: RecipeResult }) {
       </View>
       <View style={styles.body}>
         <AppText variant="label" numberOfLines={2}>
-          {recipe.name}
+          {title}
         </AppText>
         <View style={styles.meta}>
           <Icon name="clock" size={14} color={colors.textMuted} />

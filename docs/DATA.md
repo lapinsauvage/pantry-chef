@@ -41,6 +41,9 @@ Smaller app: `--min-reviews 5` ≈ 63k recipes (~130 MB). Dev sample: `--max-rec
 | `quantities.py` | parse "1 -2 clove garlic, minced" → qty range, unit, text, note; ISO-8601 durations |
 | `classify.py` | appliances (tags + keywords + step text, e.g. "preheat oven", "dutch oven" ≠ oven), course, cuisine, diet bits, difficulty |
 | `vocab/ingredients_fr.json` | French ingredient names (Belgian usage) |
+| `machine_translation.py` | EN→FR machine translation of recipe texts (Opus-MT via CTranslate2, on GitHub Actions only): memory keys, pre/post-processing, quality checks, memory file (docs/TRANSLATOR.md) |
+| `vocab/glossary_fr.json` | Belgian French fixes for the machine translation (crème aigre, cassonade, mijoteuse…); bump `version` after a change |
+| `add_translations.py` | fill the French columns from a translation memory (`build_db --translations` does the same) |
 
 Run tests: `cd data-pipeline && python -m pytest -q tests` (also checks that
 `src/lib/constants.ts` uses the same codes and bit values).
@@ -50,9 +53,19 @@ Rebuild locally:
 bash data-pipeline/scripts/fetch_sources.sh data-raw   # ~1 GB download
 npm run db:full      # -> build/recipes.db (~90 s)
 npm run db:sample    # -> assets/db/recipes.db (2,500 recipes for development)
+# French texts of the sample come from its committed translation memory:
+(cd data-pipeline && python -m pantry_pipeline.add_translations --db ../assets/db/recipes.db \
+   --memory translations/sample-fr.jsonl.gz)
 ```
 
-## Schema (`assets/db/recipes.db`, read-only in the app)
+French texts are made by `.github/workflows/translate.yml` (a free open-source model on a GitHub
+runner; the cloud dev container can't download models): it exports the unique metric English
+texts (`data-pipeline/scripts/export_texts.ts`), translates what the memory
+(`data-pipeline/translations/sample-fr.jsonl.gz`) doesn't hold yet, fills the sample's French
+columns and commits both back. Memory entries: `{key, kind, en, mt, fr, model, glossary, qa[, src]}`,
+`key` = sha1 of `kind + "\n" + raw` (ingredients: `text + "\u0000" + note`), see docs/TRANSLATOR.md.
+
+## Schema (`assets/db/recipes.db`, read-only in the app) — version 2
 
 ### `recipes`
 | column | type | notes |
@@ -75,6 +88,12 @@ npm run db:sample    # -> assets/db/recipes.db (2,500 recipes for development)
 | chips | TEXT JSON | short labels (`CHIPS` keys) |
 | steps | TEXT JSON | `string[]` |
 | ingredients | TEXT JSON | `IngredientTuple[]` = `[qmin, qmax, unit, pkgQty, pkgUnit, text, note, ingredientId]`, trailing nulls omitted. Units: cup, tbsp, tsp, floz, oz, lb, pint, quart, gallon, ml, l, g, kg, inch, pinch, dash, clove, can, package, jar, bottle, box, stick, slice, piece, bunch, head, sprig, stalk, drop, handful, container, bag, loaf, fillet, whole |
+| name_fr | TEXT? | machine-translated French name (schema 2; NULL = not translated) |
+| steps_fr | TEXT JSON? | `(string \| null)[]`, same length as `steps`; French already metric; null = keep English |
+| ingredients_fr | TEXT JSON? | `(string \| null)[]`, same length as `ingredients`: French "text, note" of each line (quantity still from the tuple) |
+
+The French columns are NULL together when nothing of the recipe is translated. The app shows them
+in French + metric only (`src/lib/recipe-text.ts`); a failed quality check leaves that text null.
 
 ### `ingredients`
 `id`, `name` (canonical EN), `name_fr`, `recipes` (usage count), `category`
@@ -88,9 +107,13 @@ One row per distinct non-staple ingredient per recipe. Drives "what can I cook".
 Columns `name`, `ingredients` (canonical names), `tags` (keywords + course + cuisine).
 Tokenizer `porter unicode61 remove_diacritics 2`. Rank with `bm25(recipe_fts, 10, 2, 1)`.
 
+### `recipe_fts_fr` (FTS5, contentless, rowid = recipe id)
+Column `name_fr`, tokenizer `unicode61 remove_diacritics 2` (no English stemmer). `search()`
+unions it with `recipe_fts`, so French words also find French titles.
+
 ### `meta`
 `schema_version`, `built_at`, `recipes`, `ingredients`, `image_prefix`, `min_reviews`,
-`min_rating`, `source`.
+`min_rating`, `source`, `translations_fr` (recipes with French texts).
 
 ## User data (`user.db`, created by `src/db/user.ts`)
 `settings(key, value)`, `pantry(ingredient_id, name, added_at)`, `basics(ingredient_id, name)`,
@@ -118,3 +141,5 @@ it stays null and the item is listed under "Other".
 - Some Food.com ingredient lists miss items mentioned only in the steps (e.g. "ginger").
 - Cuisine is unknown for 59 % of recipes (Food.com never tagged them).
 - Nutrition values are Food.com's per-serving estimates.
+- French recipe texts are a machine translation (free Opus-MT model + Belgian glossary): expect
+  odd sentences; descriptions stay English; only the sample is translated so far.
