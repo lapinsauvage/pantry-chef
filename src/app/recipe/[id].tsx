@@ -3,14 +3,14 @@
  * chosen units (✓ = you have it, tap to tick off), what's missing → shopping list, steps with
  * °C/cm, nutrition estimate, favourite, and the Food.com attribution link (always shown).
  */
-import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { type ErrorBoundaryProps, router, Stack, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { Suspense, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '@/components/icon';
 import { RecipePhoto } from '@/components/recipe-card';
-import { Message, PreparingRecipes } from '@/components/states';
+import { Message, PreparingRecipes, ScreenError } from '@/components/states';
 import { AppText, Button, ChipGroup, Stepper, Tag } from '@/components/ui';
 import { useRecipeDb } from '@/db/recipe-db';
 import { getRecipe, type RecipeDetail, stapleIds } from '@/db/recipes';
@@ -381,3 +381,8 @@ const styles = StyleSheet.create({
   source: { gap: space.xs, borderTopWidth: StyleSheet.hairlineWidth, paddingTop: space.lg },
   link: { minHeight: 44 },
 });
+
+/** A crash in this screen shows a retry message instead of taking down the whole app. */
+export function ErrorBoundary({ retry }: ErrorBoundaryProps) {
+  return <ScreenError retry={retry} />;
+}

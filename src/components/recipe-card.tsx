@@ -34,9 +34,19 @@ export function CoursePlaceholder({ course, size }: { course: string; size: numb
 }
 
 /** Recipe photo with disk cache and a course placeholder. */
-export function RecipePhoto({ image, course, emojiSize }: { image: string | null; course: string; emojiSize: number }) {
+export function RecipePhoto({
+  image,
+  course,
+  emojiSize,
+  variant = 'full',
+}: {
+  image: string | null;
+  course: string;
+  emojiSize: number;
+  variant?: 'full' | 'thumb';
+}) {
   const [failed, setFailed] = useState(false);
-  const uri = imageUrl(image);
+  const uri = imageUrl(image, variant);
   if (!uri || failed) return <CoursePlaceholder course={course} size={emojiSize} />;
   return (
     <Image
@@ -92,7 +102,7 @@ function RecipeRowInner({ recipe }: { recipe: RecipeResult }) {
         Platform.OS === 'ios' && pressed && { opacity: 0.7 },
       ]}>
       <View style={styles.thumb}>
-        <RecipePhoto image={recipe.image} course={recipe.course} emojiSize={36} />
+        <RecipePhoto image={recipe.image} course={recipe.course} emojiSize={36} variant="thumb" />
       </View>
       <View style={styles.body}>
         <AppText variant="label" numberOfLines={2}>

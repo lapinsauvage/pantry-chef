@@ -150,10 +150,14 @@ export const TIME_PRESETS = [15, 30, 45, 60, 90, null] as const;
 export const IMAGE_PREFIX =
   'https://img.sndimg.com/food/image/upload/w_555,h_416,c_fit,fl_progressive,q_95/v1/img/recipes/';
 
+/** Same photo as a 300×300 crop for list thumbnails (~5× less data than the full photo). */
+export const THUMB_PREFIX = IMAGE_PREFIX.replace('w_555,h_416,c_fit,fl_progressive,q_95', 'w_300,h_300,c_fill,q_80');
+
 /** recipes.image holds the path after IMAGE_PREFIX, or "!<full url>" for other hosts. */
-export function imageUrl(image: string | null | undefined): string | null {
+export function imageUrl(image: string | null | undefined, variant: 'full' | 'thumb' = 'full'): string | null {
   if (!image) return null;
-  return image.startsWith('!') ? image.slice(1) : IMAGE_PREFIX + image;
+  if (image.startsWith('!')) return image.slice(1);
+  return (variant === 'thumb' ? THUMB_PREFIX : IMAGE_PREFIX) + image;
 }
 
 /** Link to the original recipe on Food.com (shown on every recipe for attribution). */

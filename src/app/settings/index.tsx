@@ -1,9 +1,10 @@
 import Constants from 'expo-constants';
+import type { ErrorBoundaryProps } from 'expo-router';
 import { Suspense, useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 
 import { KitchenSection, LanguagePicker, UnitsPicker } from '@/components/kitchen';
-import { PreparingRecipes } from '@/components/states';
+import { PreparingRecipes, ScreenError } from '@/components/states';
 import { AppText, Button, InfoRow, Section } from '@/components/ui';
 import { RECIPE_DB_VERSION } from '@/db/data-version';
 import { useRecipeDb } from '@/db/recipe-db';
@@ -80,3 +81,8 @@ const styles = StyleSheet.create({
   content: { padding: space.lg, gap: space.xl, width: '100%', maxWidth: 640, alignSelf: 'center' },
   padded: { paddingHorizontal: space.lg, paddingVertical: space.md },
 });
+
+/** A crash in this screen shows a retry message instead of taking down the whole app. */
+export function ErrorBoundary({ retry }: ErrorBoundaryProps) {
+  return <ScreenError retry={retry} />;
+}

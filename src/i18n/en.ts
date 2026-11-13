@@ -20,6 +20,8 @@ export const en = {
     preparingBody: 'Setting up the recipe library on your phone. This only happens once.',
     errorTitle: 'Something went wrong',
     errorBody: 'The recipe library could not be opened.',
+    errorScreen: 'This screen could not be shown. Please try again.',
+    percent: (n: number) => `${n}%`,
   },
   tabs: {
     cook: 'Cook',

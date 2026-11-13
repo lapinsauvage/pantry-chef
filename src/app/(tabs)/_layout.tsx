@@ -1,5 +1,7 @@
+import type { ErrorBoundaryProps } from 'expo-router';
 import { NativeTabs } from 'expo-router/native-tabs';
 
+import { ScreenError } from '@/components/states';
 import { useI18n } from '@/i18n';
 import { useShoppingCount } from '@/state/shopping';
 import { useColors } from '@/theme';
@@ -35,4 +37,9 @@ export default function TabsLayout() {
       </NativeTabs.Trigger>
     </NativeTabs>
   );
+}
+
+/** A crash in this screen shows a retry message instead of taking down the whole app. */
+export function ErrorBoundary({ retry }: ErrorBoundaryProps) {
+  return <ScreenError retry={retry} />;
 }

@@ -4,7 +4,7 @@
  * move between steps and vibrate when done. Ingredients (scaled to the chosen servings) in a sheet.
  * Background notifications are a later improvement (see docs/SPEC.md).
  */
-import { router, useLocalSearchParams } from 'expo-router';
+import { type ErrorBoundaryProps, router, useLocalSearchParams } from 'expo-router';
 import { useKeepAwake } from 'expo-keep-awake';
 import { Suspense, useEffect, useRef, useState } from 'react';
 import {
@@ -23,7 +23,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Icon } from '@/components/icon';
-import { Message, PreparingRecipes } from '@/components/states';
+import { Message, PreparingRecipes, ScreenError } from '@/components/states';
 import { AppText, Button, Chip, ChipGroup } from '@/components/ui';
 import { useRecipeDb } from '@/db/recipe-db';
 import { getRecipe, type RecipeDetail } from '@/db/recipes';
@@ -286,3 +286,8 @@ const styles = StyleSheet.create({
   sheetLine: { ...typography.body, fontSize: 18, lineHeight: 26 },
   bold: { fontWeight: '600' },
 });
+
+/** A crash in this screen shows a retry message instead of taking down the whole app. */
+export function ErrorBoundary({ retry }: ErrorBoundaryProps) {
+  return <ScreenError retry={retry} />;
+}

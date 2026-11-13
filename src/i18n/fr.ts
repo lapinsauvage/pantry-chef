@@ -20,6 +20,8 @@ export const fr: Translations = {
     preparingBody: 'Installation de la bibliothèque de recettes sur votre téléphone. Cela n’arrive qu’une fois.',
     errorTitle: 'Un problème est survenu',
     errorBody: 'Impossible d’ouvrir la bibliothèque de recettes.',
+    errorScreen: 'Impossible d’afficher cet écran. Réessayez.',
+    percent: (n: number) => `${n}\u202f%`,
   },
   tabs: {
     cook: 'Cuisiner',

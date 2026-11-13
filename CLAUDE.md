@@ -32,7 +32,12 @@ milestone), `docs/DATA.md` (database schema and codes), `docs/BUILD.md` (builds,
   to ingredients EN/FR → aisle groups, tick, clear ticked, share as text, tab badge = items to
   buy; "Add missing" from recipes), Cooking mode `cook/[id]` (full-screen, one step per page,
   `useKeepAwake`, timers from `detectTimers`, ingredients sheet). Background timer notifications
-  are not done. **Next: M5** (polish, icon/splash, perf pass, build + install on both phones).
+  are not done.
+- **M5 in progress:** icon + splash (pot glyph on orange; regenerate with
+  `node scripts/make-icons.cjs`), first launch skips the import once done and shows a percentage,
+  Android cache copy deleted after import, `PRAGMA mmap_size`, 300 px list thumbnails, per-route
+  error screens. Remaining: build with "Build apps" and test on both phones (checklist in
+  docs/BUILD.md), then fix what the phones show.
 
 ## Map
 ```
@@ -108,7 +113,11 @@ queries get a case in `src/lib/__tests__/queries.test.ts`, which runs the real S
 - The iOS app can only be compiled by the GitHub workflow (macOS runner); don't try Xcode locally on Linux.
 - First launch of a release build copies the ~220 MB DB in the background (`recipeDb()` starts in
   the root layout). Components that need recipes call `useRecipeDb()` inside
-  `<Suspense fallback={<PreparingRecipes />}>` — never block the whole app on it.
+  `<Suspense fallback={<PreparingRecipes />}>` — never block the whole app on it. Progress = size
+  of the destination file / `RECIPE_DB_BYTES` (written into data-version.ts by use-full-db.sh).
+  Once `recipe_db_name` matches and the file exists, the import call is skipped entirely
+  (`importDatabaseFromAssetAsync` would otherwise re-extract the asset on Android every launch).
+- List thumbnails use `imageUrl(image, 'thumb')` (CDN 300×300 crop); the recipe hero uses full size.
 - Expo SDK 58: JS tabs moved to `expo-router/js-tabs`; we use `expo-router/native-tabs` (no header —
   hence a `Stack` per tab via `TabStack`). RN 0.88 `ScrollView` refs are `ScrollViewInstance`.
 - Keyboard: Android is edge-to-edge, so use `KeyboardAvoidingView behavior="padding"` on both platforms.

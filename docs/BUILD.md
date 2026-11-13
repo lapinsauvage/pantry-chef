@@ -59,6 +59,30 @@ Limits of a **free** Apple ID: the app stops opening after **7 days** until you 
 **3 sideloaded apps** at a time. A paid Apple Developer account ($99/year) removes both
 limits and enables TestFlight via EAS (`npx eas-cli build -p ios`).
 
+## First launch and storage
+The first time it opens, the app copies its recipe library (~220 MB) into its own storage while
+you go through the setup questions; "Preparing recipes…" shows a percentage. Later launches skip
+this. Plan for about **0.5 GB** on the phone (the app plus its copy of the recipes). On Android the
+temporary extraction is deleted after the copy. A smaller build: run **Build apps** with
+`min reviews = 5` (~63k recipes, ~130 MB).
+
+## Test checklist (after installing)
+Check these on each phone and note anything odd (a screenshot helps):
+1. **First launch:** the setup screens respond while "Preparing recipes…" counts up; how many
+   seconds until it finishes? Close and reopen the app: it should open straight away.
+2. **Language:** French phone → French app; switching in Settings changes everything at once.
+3. **Cook tab:** add 5 ingredients → results within about half a second; "Ready to cook" /
+   "Missing 1: …" badges; scrolling stays smooth; photos load (with internet) or show the
+   course emoji (offline).
+4. **Recipe:** grams/ml in the ingredient list, °C in the steps, servings +/– rescales,
+   ♥ favourite, "Add missing to shopping list", the Food.com link opens.
+5. **Cooking mode:** the screen stays on; swipe between steps; tap a ⏱ timer, change step,
+   the countdown keeps going and the phone vibrates at zero.
+6. **Browse:** typing shows results as you type (try "poulet riz"), collections, filters, sort.
+7. **Shopping list:** items grouped by aisle, tick, "Clear checked", Share → WhatsApp/Messages.
+8. **Offline:** turn on airplane mode — everything works except photos.
+9. **Dark mode** and **large text** (phone settings): everything readable, nothing cut off.
+
 ## Updating the recipe data
 Change the pipeline (with tests), push, run **Build apps**. The new database gets a new
 version id (`src/db/data-version.ts` is rewritten in CI), the app imports it on first launch
@@ -70,4 +94,5 @@ after the update and deletes the old copy. User data (`user.db`) is never touche
   `sudo xcode-select -s /Applications/Xcode_<version>.app` in a step before prebuild.
 - **App shows only 2,500 recipes** → you are running the sample DB (Expo Go / local build);
   release builds from the workflow contain the full database.
-- **First launch takes a while** → the bundled database (~220 MB) is copied once.
+- **First launch takes a while** → the bundled database (~220 MB) is copied once (with a percentage);
+  later launches skip the copy.
