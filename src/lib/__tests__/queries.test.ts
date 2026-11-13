@@ -12,6 +12,7 @@ import {
   browse,
   findByPantry,
   ftsQuery,
+  getRecipe,
   ingredientsByName,
   matchIngredient,
   recipeCardsByIds,
@@ -161,4 +162,17 @@ test('typed shopping items match ingredients in English or French', async () => 
   assert.equal((await matchIngredient(db, 'Sucre impalpable'))?.name, 'powdered sugar');
   assert.equal(await matchIngredient(db, 'batteries'), null);
   assert.equal(await matchIngredient(db, 'oign'), null); // prefixes don't count
+});
+
+test('French texts: cards carry name_fr, details steps_fr / ingredients_fr, French words find French titles', async () => {
+  const hits = await search(db, 'tarte');
+  assert.ok(hits.length > 0);
+  assert.ok(hits.some((r) => /tarte/i.test(r.name_fr ?? '')), 'a French title matches');
+  assert.ok(hits.every((r) => 'name_fr' in r));
+  const recipe = await getRecipe(db, hits[0].id);
+  assert.ok(recipe?.steps_fr && recipe.steps_fr.length === recipe.steps.length);
+  assert.ok(recipe.ingredients_fr && recipe.ingredients_fr.length === recipe.ingredients.length);
+  // English and French-ingredient searches still work alongside the French titles
+  assert.ok((await search(db, 'chicken')).length > 0);
+  assert.ok((await search(db, 'poulet riz')).length > 0);
 });
