@@ -1,0 +1,6 @@
+# Machine translation (GitHub Actions only, see docs/TRANSLATOR.md). torch is only needed once to
+# convert the model: pip install torch --index-url https://download.pytorch.org/whl/cpu
+ctranslate2
+sentencepiece
+sacremoses
+transformers<5

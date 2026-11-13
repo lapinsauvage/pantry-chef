@@ -28,11 +28,13 @@ from collections import Counter, defaultdict
 import pyarrow.parquet as pq
 
 from . import classify, ingredients as ingr, quantities
+from . import add_translations
+from .machine_translation import read_memory
 from .translations import ingredient_fr
 
 IMAGE_PREFIX = ("https://img.sndimg.com/food/image/upload/"
                 "w_555,h_416,c_fit,fl_progressive,q_95/v1/img/recipes/")
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2  # 2: French columns (name_fr, steps_fr, ingredients_fr) + recipe_fts_fr
 
 # Short keyword chips shown on recipe cards (Food.com keyword -> chip id)
 CHIP_KEYWORDS = {
@@ -129,7 +131,8 @@ def match_lines(names: list[str], lines: list[str]) -> list[int | None]:
 
 
 def build(parquet_path: str, csv_path: str, out_path: str, min_reviews: int,
-          min_rating: float, max_recipes: int | None, log=print) -> dict:
+          min_rating: float, max_recipes: int | None, translations: str | None = None,
+          log=print) -> dict:
     t0 = time.time()
     log(f"loading {parquet_path} ...")
     pa = load_parquet(parquet_path)
@@ -208,13 +211,15 @@ def build(parquet_path: str, csv_path: str, out_path: str, min_reviews: int,
             diet INTEGER NOT NULL, avoid INTEGER NOT NULL, difficulty INTEGER NOT NULL,
             kcal REAL, protein REAL, carbs REAL, fat REAL, n_ing INTEGER NOT NULL,
             n_core INTEGER NOT NULL, chips TEXT NOT NULL, steps TEXT NOT NULL,
-            ingredients TEXT NOT NULL);
+            ingredients TEXT NOT NULL, name_fr TEXT, steps_fr TEXT, ingredients_fr TEXT);
         CREATE TABLE recipe_ingredients (
             ingredient_id INTEGER NOT NULL, recipe_id INTEGER NOT NULL,
             PRIMARY KEY (ingredient_id, recipe_id)) WITHOUT ROWID;
         CREATE VIRTUAL TABLE recipe_fts USING fts5(
             name, ingredients, tags, content='',
             tokenize='porter unicode61 remove_diacritics 2');
+        CREATE VIRTUAL TABLE recipe_fts_fr USING fts5(
+            name_fr, content='', tokenize='unicode61 remove_diacritics 2');
     """)
     avoid_by_name = {n: ingr.avoid_mask(n) for n in vocab}
     db.executemany(
@@ -268,14 +273,20 @@ def build(parquet_path: str, csv_path: str, out_path: str, min_reviews: int,
             len(raw_lines), len(core), json.dumps(chips, separators=(",", ":")),
             json.dumps(steps, ensure_ascii=False, separators=(",", ":")),
             json.dumps(ing_json, ensure_ascii=False, separators=(",", ":")),
+            None, None, None,  # French texts: filled by add_translations (--translations)
         ))
         links.extend((i, rid) for i in core)
         fts.append((rid, name, " ".join(sorted(canon_set)),
                     " ".join(sorted({k.lower() for k in keywords if k} |
                                     {classify.course(tags), classify.cuisine(tags)}))))
-    db.executemany(f"INSERT INTO recipes VALUES ({','.join('?' * 28)})", rows)
+    db.executemany(f"INSERT INTO recipes VALUES ({','.join('?' * 31)})", rows)
     db.executemany("INSERT INTO recipe_ingredients VALUES (?,?)", links)
     db.executemany("INSERT INTO recipe_fts(rowid, name, ingredients, tags) VALUES (?,?,?,?)", fts)
+    translated = 0
+    if translations:
+        tr = add_translations.apply(db, read_memory(translations))
+        translated = tr["translated"]
+        log(f"  French texts for {tr['translated']:,} recipes ({tr['complete']:,} complete)")
     db.executescript("""
         CREATE INDEX recipes_score ON recipes(score DESC);
         CREATE INDEX recipes_course ON recipes(course, score DESC);
@@ -291,10 +302,11 @@ def build(parquet_path: str, csv_path: str, out_path: str, min_reviews: int,
         "image_prefix": IMAGE_PREFIX,
         "min_reviews": min_reviews,
         "min_rating": min_rating,
+        "translations_fr": translated,
         "source": "Food.com via Kaggle datasets irkaal/foodcom-recipes-and-reviews + "
                   "shuyangli94/foodcom-recipes-with-search-terms-and-tags (personal use)",
     }
-    db.executemany("INSERT INTO meta VALUES (?,?)", [(k, str(v)) for k, v in meta.items()])
+    db.executemany("INSERT OR REPLACE INTO meta VALUES (?,?)", [(k, str(v)) for k, v in meta.items()])
     db.commit()
     db.execute("VACUUM")
     db.execute("ANALYZE")
@@ -317,8 +329,10 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--min-rating", type=float, default=4.0)
     ap.add_argument("--max-recipes", type=int, default=None)
     ap.add_argument("--meta-json", default=None, help="also write build stats here")
+    ap.add_argument("--translations", default=None,
+                    help="translation memory (gzip JSONL) for the French columns, see docs/TRANSLATOR.md")
     a = ap.parse_args(argv)
-    meta = build(a.parquet, a.csv, a.out, a.min_reviews, a.min_rating, a.max_recipes)
+    meta = build(a.parquet, a.csv, a.out, a.min_reviews, a.min_rating, a.max_recipes, a.translations)
     if a.meta_json:
         with open(a.meta_json, "w") as f:
             json.dump(meta, f, indent=2)

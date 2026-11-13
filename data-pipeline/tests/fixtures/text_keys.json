@@ -1,0 +1,27 @@
+[
+ {
+  "kind": "name",
+  "raw": "Best Ever Banana Bread",
+  "key": "0ca820d995113d41b7233137b634c5f66561bad8"
+ },
+ {
+  "kind": "step",
+  "raw": "Preheat oven to 350°F. Grease a 9x5-inch loaf pan.",
+  "key": "b09c3922c42dbc9ca33bc216ddb48352b39d3679"
+ },
+ {
+  "kind": "step",
+  "raw": "Crème brûlée — torch the sugar until golden.",
+  "key": "e7bd1e828c0d57352b70c2b38a882a762a72463a"
+ },
+ {
+  "kind": "ingredient",
+  "raw": "butter\u0000softened",
+  "key": "9ef3db6daa08c1f01ec9822f4212a612c69d0eb7"
+ },
+ {
+  "kind": "ingredient",
+  "raw": "all-purpose flour\u0000",
+  "key": "733a9df24345c9bcf212f60f700fec55e756f0a3"
+ }
+]

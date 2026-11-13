@@ -1,0 +1,105 @@
+# Translate the committed sample recipes (the 2,500 most popular) EN→FR with a free open-source
+# model on this runner (docs/TRANSLATOR.md), then commit the French texts back to the branch:
+#   assets/db/recipes.db                      French columns filled (name_fr, steps_fr, ingredients_fr)
+#   data-pipeline/translations/sample-fr.jsonl.gz   translation memory: later runs only translate what changed
+#   src/db/data-version.ts                   new sample version, so installed apps re-import it
+# Runs when the translator changes on a branch, or by hand once this file is on main.
+name: Translate recipes
+
+on:
+  workflow_dispatch:
+    inputs:
+      beam:
+        description: Beam size (2 = tested quality/speed; 1 = faster)
+        default: "2"
+      retranslate:
+        description: Translate everything again (ignore the memory)
+        type: boolean
+        default: false
+  push:
+    branches-ignore: [main]
+    paths:
+      - .github/workflows/translate.yml
+      - data-pipeline/pantry_pipeline/machine_translation.py
+      - data-pipeline/pantry_pipeline/vocab/glossary_fr.json
+      - data-pipeline/scripts/export_texts.ts
+
+permissions:
+  contents: write
+
+concurrency:
+  group: translate-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  MODEL: Helsinki-NLP/opus-mt-tc-big-en-fr
+  MEMORY: data-pipeline/translations/sample-fr.jsonl.gz
+
+jobs:
+  translate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Restore the converted model
+        id: model
+        uses: actions/cache@v6
+        with:
+          path: models
+          key: ct2-int8-opus-mt-tc-big-en-fr-v1
+
+      - name: Install translation tools (CPU only)
+        run: |
+          if [[ "${{ steps.model.outputs.cache-hit }}" != true ]]; then
+            pip install torch --index-url https://download.pytorch.org/whl/cpu
+          fi
+          pip install -r data-pipeline/requirements-translate.txt
+
+      - name: Convert the model to CTranslate2 (int8)
+        if: steps.model.outputs.cache-hit != 'true'
+        run: ct2-transformers-converter --model "$MODEL" --output_dir "models/${MODEL##*/}" --quantization int8
+
+      - name: Export the texts (metric English)
+        run: |
+          mkdir -p build
+          node --experimental-strip-types data-pipeline/scripts/export_texts.ts assets/db/recipes.db > build/texts.jsonl
+
+      - name: Translate
+        working-directory: data-pipeline
+        run: |
+          mkdir -p translations
+          python -m pantry_pipeline.machine_translation \
+            --texts ../build/texts.jsonl --memory "../$MEMORY" --out "../$MEMORY" \
+            --model "$MODEL=../models/${MODEL##*/}" --beam "${{ inputs.beam || '2' }}" \
+            ${{ inputs.retranslate && '--retranslate' || '' }} \
+            --deadline-minutes 100 --report ../build/translation-report.md
+          cat ../build/translation-report.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Put the French texts into the sample database
+        run: |
+          (cd data-pipeline && python -m pantry_pipeline.add_translations --db ../assets/db/recipes.db --memory "../$MEMORY")
+          bash scripts/use-full-db.sh assets/db/recipes.db "sample-$(sha256sum assets/db/recipes.db | cut -c1-12)"
+          ls -la assets/db "$MEMORY"
+
+      - name: Commit to the branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/db/recipes.db src/db/data-version.ts "$MEMORY"
+          if git diff --cached --quiet; then echo "nothing new"; exit 0; fi
+          git commit -m "French texts for the sample recipes (translate run ${GITHUB_RUN_ID})"
+          for i in 1 2 3; do git pull --rebase origin "$GITHUB_REF_NAME" && git push origin "HEAD:$GITHUB_REF_NAME" && break; sleep 5; done
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: translation-report
+          path: build/translation-report.md
+          retention-days: 7

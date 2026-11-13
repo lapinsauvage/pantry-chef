@@ -2,7 +2,8 @@
 # unsigned iOS IPA (for Sideloadly / AltStore), and attaches them to a GitHub Release.
 #
 # Run it from the GitHub website: Actions → "Build apps" → Run workflow.
-# Downloads appear under Releases (tag "latest" unless you pushed a v* tag).
+# Downloads appear under Releases (tag "latest" unless you pushed a v* tag; tag "tryout" for
+# database=sample: the 2,500 most popular recipes committed in the repo, with French texts).
 name: Build apps
 
 on:
@@ -17,6 +18,11 @@ on:
         description: "Recipe quality filter: minimum reviews (3 ≈ 107k recipes / 223 MB, 5 ≈ 63k / ~130 MB)"
         type: string
         default: "3"
+      database:
+        description: "full = every recipe (built here); sample = the 2,500 most popular, with French texts (quick tryout, release 'tryout')"
+        type: choice
+        options: [full, sample]
+        default: full
   push:
     tags: ["v*"]
 
@@ -30,6 +36,7 @@ concurrency:
 env:
   MIN_REVIEWS: ${{ inputs.min_reviews || '3' }}
   PLATFORMS: ${{ inputs.platforms || 'both' }}
+  DATABASE: ${{ inputs.database || 'full' }}
 
 jobs:
   database:
@@ -41,24 +48,30 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - name: Use the committed sample database (French texts included)
+        if: env.DATABASE == 'sample'
+        run: mkdir -p build && cp assets/db/recipes.db build/recipes.db
+
       - name: Cache key
+        if: env.DATABASE == 'full'
         id: key
         run: echo "key=recipes-db-${{ hashFiles('data-pipeline/pantry_pipeline/**', 'data-pipeline/scripts/**') }}-r${MIN_REVIEWS}" >> "$GITHUB_OUTPUT"
 
       - name: Restore database from cache
+        if: env.DATABASE == 'full'
         id: cache
         uses: actions/cache@v6
         with:
           path: build/recipes.db
           key: ${{ steps.key.outputs.key }}
 
-      - if: steps.cache.outputs.cache-hit != 'true'
+      - if: env.DATABASE == 'full' && steps.cache.outputs.cache-hit != 'true'
         uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
       - name: Download sources and build database
-        if: steps.cache.outputs.cache-hit != 'true'
+        if: env.DATABASE == 'full' && steps.cache.outputs.cache-hit != 'true'
         env:
           KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
         run: |
@@ -199,19 +212,24 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           ls -la dist
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then TAG="${GITHUB_REF#refs/tags/}"; else TAG=latest; fi
-          NOTES="Built $(date -u +%Y-%m-%d) from ${GITHUB_SHA::7} · recipe database ${{ needs.database.outputs.version }} (min reviews ${MIN_REVIEWS}).
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then TAG="${GITHUB_REF#refs/tags/}"
+          elif [[ "$DATABASE" == sample ]]; then TAG=tryout
+          else TAG=latest; fi
+          if [[ "$DATABASE" == sample ]]; then DATA="2,500 most popular recipes with French texts (tryout)"
+          else DATA="min reviews ${MIN_REVIEWS}"; fi
+          NOTES="Built $(date -u +%Y-%m-%d) from ${GITHUB_SHA::7} · recipe database ${{ needs.database.outputs.version }} (${DATA}).
           Android: download the .apk on your phone and open it.
           iPhone: sideload the -unsigned.ipa with Sideloadly or AltStore (see docs/BUILD.md)."
-          if [[ "$TAG" == latest ]]; then
-            # keep the moving "latest" tag on the commit that was just built
-            git tag -f latest "$GITHUB_SHA" && git push -f origin refs/tags/latest
+          if [[ "$TAG" == latest || "$TAG" == tryout ]]; then
+            # keep the moving tag on the commit that was just built
+            git tag -f "$TAG" "$GITHUB_SHA" && git push -f origin "refs/tags/$TAG"
           fi
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release edit "$TAG" --notes "$NOTES"
             # remove previous builds so the release only holds the newest files
             for a in $(gh release view "$TAG" --json assets -q '.assets[].name'); do gh release delete-asset "$TAG" "$a" -y; done
           else
-            gh release create "$TAG" --title "Pantry Chef ($TAG)" --notes "$NOTES" --verify-tag
+            EXTRA=(); if [[ "$TAG" == tryout ]]; then EXTRA=(--prerelease --latest=false); fi
+            gh release create "$TAG" --title "Pantry Chef ($TAG)" --notes "$NOTES" --verify-tag "${EXTRA[@]}"
           fi
           gh release upload "$TAG" dist/* --clobber
