@@ -17,6 +17,16 @@ const ICONS = {
   favorite: { ios: 'heart', android: 'favorite' },
   cart: { ios: 'cart', android: 'shopping_cart' },
   info: { ios: 'info.circle', android: 'info' },
+  heart: { ios: 'heart', android: 'favorite' },
+  heartFill: { ios: 'heart.fill', android: 'favorite' },
+  clock: { ios: 'clock', android: 'schedule' },
+  star: { ios: 'star.fill', android: 'star' },
+  filter: { ios: 'line.3.horizontal.decrease.circle', android: 'tune' },
+  minus: { ios: 'minus', android: 'remove' },
+  circle: { ios: 'circle', android: 'radio_button_unchecked' },
+  checkCircle: { ios: 'checkmark.circle.fill', android: 'check_circle' },
+  external: { ios: 'safari', android: 'open_in_new' },
+  cartAdd: { ios: 'cart.badge.plus', android: 'add_shopping_cart' },
 } satisfies Record<string, { ios: SFSymbol; android: AndroidSymbol }>;
 
 export type IconName = keyof typeof ICONS;

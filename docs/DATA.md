@@ -106,6 +106,10 @@ longer exist are dropped.
 completed — an interrupted copy is redone), `basics_seeded` (`1` once `DEFAULT_BASICS` were added).
 Missing or invalid values fall back to the defaults (metric, oven + stovetop + microwave).
 
+`history` keeps the last 50 opened recipes (`recordView`). "Add missing to shopping list" inserts
+one `shopping_items` row per missing ingredient (text in the UI language, `ingredient_id`,
+`recipe_id`) and skips ingredients already on the list unchecked.
+
 ## Known limitations
 - Photos are loaded from Food.com's image CDN; some may disappear over time → show the course placeholder.
 - Diet/allergen flags are keyword heuristics on ingredient names — label them "estimated", not medical advice.

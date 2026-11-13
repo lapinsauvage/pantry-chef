@@ -14,6 +14,7 @@ import {
 import { use } from 'react';
 
 import { basicsStore, seedDefaultBasics } from '@/state/basics';
+import { pantryStore } from '@/state/pantry';
 
 import { RECIPE_DB_NAME } from './data-version';
 import { ingredientsByName } from './recipes';
@@ -37,6 +38,7 @@ async function openRecipeDb(): Promise<SQLiteDatabase> {
     const rows = await ingredientsByName(db, userIngredientNames());
     remapIngredientIds(new Map(rows.map((r) => [r.name, r.id])));
     basicsStore.reload();
+    pantryStore.reload();
     await deleteDatabaseAsync(previous).catch(() => {});
   }
   setSetting(SETTINGS.recipeDbName, RECIPE_DB_NAME);

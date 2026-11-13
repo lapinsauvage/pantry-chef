@@ -2,7 +2,7 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
-import { formatDate, formatNumber } from '../format.ts';
+import { formatDate, formatMinutes, formatNumber } from '../format.ts';
 
 test('english number formatting', () => {
   assert.equal(formatNumber(106929, 'en'), '106,929');
@@ -25,4 +25,15 @@ test('dates are shown day first', () => {
   assert.equal(formatDate('2026-01-05'), '05/01/2026');
   assert.equal(formatDate(undefined), '—');
   assert.equal(formatDate('soon'), '—');
+});
+
+test('cooking times', () => {
+  assert.equal(formatMinutes(45, 'en'), '45 min');
+  assert.equal(formatMinutes(60, 'en'), '1 h');
+  assert.equal(formatMinutes(90, 'fr'), '1 h 30');
+  assert.equal(formatMinutes(125, 'en'), '2 h 05');
+  assert.equal(formatMinutes(1500, 'en'), '1 d 1 h');
+  assert.equal(formatMinutes(2880, 'fr'), '2 j');
+  assert.equal(formatMinutes(null, 'en'), '—');
+  assert.equal(formatMinutes(0, 'en'), '—');
 });

@@ -17,15 +17,24 @@ milestone), `docs/DATA.md` (database schema and codes), `docs/BUILD.md` (builds,
 - **M1 done:** native tabs (each with a header stack + settings button), onboarding behind a
   `Stack.Protected` guard, EN/FR i18n (`src/i18n/`), settings store on `user.db`
   (`src/state/`), light/dark theme (`src/theme/`), Settings screens, background recipe-DB import.
-  Browse/Favourites/Shopping tabs are placeholders. **Next: M2** (Cook tab + Recipe screen).
+  Browse/Favourites/Shopping tabs are placeholders.
+- **M2 done:** Cook tab (picked ingredients → `pantry`, time / missing allowed / course chips,
+  filter sheet `/filters` overriding Settings, debounced paged `findByPantry` results with
+  "missing: …" names), ingredient picker `/pantry`, Recipe screen `recipe/[id]` (servings scaling,
+  metric/US, ✓ owned lines, missing → shopping list, steps via `metricizeText`, nutrition,
+  favourite, Food.com link, history). "Start cooking" (M4) not added yet. **Next: M3** (Browse).
 
 ## Map
 ```
-src/app/            routes only (Expo Router): _layout (guard), onboarding, settings/*, (tabs)/<tab>/{_layout,index}
+src/app/            routes only (Expo Router): _layout (guard), onboarding, settings/*, (tabs)/<tab>/{_layout,index},
+                    recipe/[id], pantry (picker modal), filters (Cook filter modal)
 src/components/     ui.tsx (Text, Button, Section, rows, Chip), kitchen.tsx (editors shared by
-                    onboarding + settings), navigation.tsx (TabStack, header options), states.tsx, icon.tsx
+                    onboarding + settings), navigation.tsx (TabStack, header options), states.tsx, icon.tsx,
+                    recipe-card.tsx (RecipeRow list item, RecipePhoto with course placeholder)
+src/hooks/          use-ingredient-names.ts (French names for pantry/basics)
 src/i18n/           en.ts + fr.ts (typed dictionaries) · index.tsx (useI18n → { t, lang })
-src/state/          settings.ts (useSettings/updateSettings), basics.ts, reset.ts — stores over user.db
+src/state/          settings.ts (useSettings/updateSettings), basics.ts, pantry.ts, favorites.ts, cook.ts
+                    (Cook tab options, in memory), reset.ts — small stores over user.db
 src/theme/          palette (light/dark), useColors, spacing, typography
 src/db/recipe-db.ts first-launch import of recipes.db; useRecipeDb() suspends until ready
 src/db/recipes.ts   ALL reads of recipes.db (findByPantry, browse, search, getRecipe, searchIngredients…)
@@ -34,6 +43,8 @@ src/db/data-version.ts   rewritten by CI (scripts/use-full-db.sh) — don't edit
 src/lib/units.ts    formatIngredient, convertQuantity, metricizeText (°F→°C), scaleFactor
 src/lib/constants.ts     EQUIPMENT/DIETS/AVOID bits, COURSES, CUISINES, categories, labels EN/FR
 src/lib/settings.ts      Settings type, defaults, parse/serialize, resolveLanguage (pure, tested)
+src/lib/cook.ts          course groups, cookFilters, queryKey, missingIds, lineStatus (pure, tested)
+src/lib/format.ts        formatNumber / formatDate / formatMinutes (EN/FR)
 assets/db/recipes.db     2,500-recipe SAMPLE (committed). Full DB is built in CI only.
 data-pipeline/      Python: builds recipes.db from the Food.com datasets (+ pytest)
 .github/workflows/  ci.yml (checks) · build-apps.yml (DB → APK + unsigned IPA → Release)
@@ -82,4 +93,9 @@ run with `node --experimental-strip-types`, import with the `.ts` extension).
 - Keyboard: Android is edge-to-edge, so use `KeyboardAvoidingView behavior="padding"` on both platforms.
 - The app isn't meant for web: expo-sqlite's web build can't do the synchronous `user.db` open at startup.
 - `findByPantry` excludes staples (water, salt, pepper, ice, cooking spray) automatically;
-  user "basics" are passed in `basics` and count as owned.
+  user "basics" are passed in `basics` and count as owned. Measured ~110 ms for 5 picked
+  ingredients on the full 107k DB on a dev machine (budget 500 ms on a phone); a "candidates
+  first" rewrite was tried and was slower — re-measure before changing it.
+- `recipe_ingredients` has no index by recipe: to know which ingredients a recipe misses, read
+  `recipes.ingredients` (`recipeIngredientIds`) + `missingIds()`; don't query it by `recipe_id`.
+- Build the full DB locally for benchmarks: `npm run data:fetch && npm run db:full` → `build/recipes.db`.

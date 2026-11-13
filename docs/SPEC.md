@@ -29,7 +29,9 @@ Expo Router, native tabs + stacks (routes in `src/app/`). Each tab is a folder w
 | `(tabs)/browse/index` | **Browse** — categories, collections, search |
 | `(tabs)/favorites/index` | **Favourites** + recently viewed |
 | `(tabs)/shopping/index` | **Shopping list** |
-| `recipe/[id]` | Recipe detail (M2) |
+| `recipe/[id]` | Recipe detail |
+| `pantry` | Ingredient picker (modal from the Cook tab) |
+| `filters` | Cook filter sheet: appliances / diet / avoid for this search (modal) |
 | `cook/[id]` | Cooking mode, step by step (M4) |
 | `settings/index` | Settings (gear icon in tab headers) |
 | `settings/appliances` · `settings/basics` · `settings/diet` | Settings sub-screens (also used for "My kitchen" on the Cook tab) |
@@ -120,7 +122,7 @@ Belgian/French recipe pack from a licensed source.
 |---|---|---|
 | **M0** ✅ | Data pipeline, sample + full DB, query layer (`src/db/recipes.ts`), units/temperatures (`src/lib/units.ts`), user DB, CI, build workflows | this repo |
 | **M1** ✅ | Tabs + stacks, i18n (EN/FR, follows system, override in settings), settings store on `user.db`, onboarding, theme | App opens to Cook tab in the right language; onboarding saves appliances/basics |
-| **M2** | Cook tab (picker + results) and Recipe screen (scaling, units, missing list, favourite) | Picking 5 ingredients shows ranked results in < 0.5 s; recipe shows metric quantities |
+| **M2** ✅ | Cook tab (picker + results) and Recipe screen (scaling, units, missing list, favourite) | Picking 5 ingredients shows ranked results in < 0.5 s; recipe shows metric quantities |
 | **M3** | Browse: search, categories, collections, filter sheet, sort | FTS search returns results while typing; filters combine correctly |
 | **M4** | Favourites, history, shopping list, cooking mode with timers + keep-awake | Missing ingredients go to the list in one tap; cooking mode stays awake |
 | **M5** | Polish: icon/splash, empty/error states, first-launch import progress, perf pass, run "Build apps" workflow and install on both phones | APK installs on Android; IPA sideloads on iPhone and runs offline |

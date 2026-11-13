@@ -40,11 +40,13 @@ test('no empty strings; functions return text', () => {
 });
 
 test('plurals', () => {
-  assert.equal(en.cook.basicsCount(1), '1 basic ingredient');
-  assert.equal(en.cook.basicsCount(0), '0 basic ingredients');
-  assert.equal(fr.cook.basicsCount(0), '0 produit de base');
-  assert.equal(fr.cook.basicsCount(1), '1 produit de base');
-  assert.equal(fr.cook.basicsCount(9), '9 produits de base');
+  assert.equal(en.recipe.servings(1), '1 serving');
+  assert.equal(en.recipe.servings(4), '4 servings');
+  assert.equal(fr.recipe.servings(1), '1 portion');
+  assert.equal(fr.recipe.servings(6), '6 portions');
+  assert.equal(fr.cook.missingChoice(1), 'Jusqu’à 1 manquant');
+  assert.equal(fr.cook.missingChoice(3), 'Jusqu’à 3 manquants');
+  assert.equal(en.recipe.added(0), 'Already on your shopping list');
   assert.equal(fr.settings.basicsCount(0), 'Aucun');
 });
 

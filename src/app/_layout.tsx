@@ -1,8 +1,8 @@
-import { type ErrorBoundaryProps, Stack, ThemeProvider } from 'expo-router';
+import { type ErrorBoundaryProps, router, Stack, ThemeProvider } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
-import { stackScreenOptions } from '@/components/navigation';
+import { HeaderTextButton, stackScreenOptions } from '@/components/navigation';
 import { ErrorMessage } from '@/components/states';
 import { recipeDb } from '@/db/recipe-db';
 import { I18nProvider, useI18n } from '@/i18n';
@@ -42,6 +42,23 @@ function RootStack() {
         <Stack.Screen name="settings/appliances" options={{ title: t.settings.appliances }} />
         <Stack.Screen name="settings/basics" options={{ title: t.settings.basics }} />
         <Stack.Screen name="settings/diet" options={{ title: t.settings.dietAndAvoid }} />
+        <Stack.Screen name="recipe/[id]" options={{ title: '' }} />
+        <Stack.Screen
+          name="pantry"
+          options={{
+            presentation: 'modal',
+            title: t.picker.title,
+            headerRight: () => <HeaderTextButton title={t.picker.done} onPress={() => router.back()} />,
+          }}
+        />
+        <Stack.Screen
+          name="filters"
+          options={{
+            presentation: 'modal',
+            title: t.filters.title,
+            headerRight: () => <HeaderTextButton title={t.filters.done} onPress={() => router.back()} />,
+          }}
+        />
       </Stack.Protected>
     </Stack>
   );

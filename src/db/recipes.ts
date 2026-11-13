@@ -296,7 +296,10 @@ export async function ingredientIdsByName(db: SQLiteDatabase, names: string[]): 
   return rows.map((r) => r.id);
 }
 
-/** Ingredients of a recipe the user doesn't have — feeds "add missing to shopping list". */
+/**
+ * Ingredients of a recipe the user doesn't have. Note: scans recipe_ingredients (no index by
+ * recipe); the app uses recipeIngredientIds + missingIds (src/lib/cook.ts) instead.
+ */
 export async function missingIngredients(
   db: SQLiteDatabase,
   recipeId: number,
@@ -308,6 +311,38 @@ export async function missingIngredients(
      WHERE ri.recipe_id = ? ${have.length ? `AND ri.ingredient_id NOT IN (${placeholders(have.length)})` : ''}
      ORDER BY i.category, i.name`,
     [recipeId, ...have],
+  );
+}
+
+const stapleCache = new WeakMap<SQLiteDatabase, Promise<ReadonlySet<number>>>();
+
+/** Ids of the staples (water, salt, pepper…) that never count as missing (cached per database). */
+export function stapleIds(db: SQLiteDatabase): Promise<ReadonlySet<number>> {
+  let ids = stapleCache.get(db);
+  if (!ids) {
+    ids = db
+      .getAllAsync<{ id: number }>('SELECT id FROM ingredients WHERE staple = 1')
+      .then((rows) => new Set(rows.map((r) => r.id)));
+    stapleCache.set(db, ids);
+  }
+  return ids;
+}
+
+/**
+ * Ingredient ids of each recipe, in recipe order, read from `recipes.ingredients` (primary-key
+ * lookups; recipe_ingredients has no index by recipe). Used to name what a result card misses.
+ */
+export async function recipeIngredientIds(db: SQLiteDatabase, recipeIds: readonly number[]): Promise<Map<number, number[]>> {
+  if (!recipeIds.length) return new Map();
+  const rows = await db.getAllAsync<{ id: number; ingredients: string }>(
+    `SELECT id, ingredients FROM recipes WHERE id IN (${placeholders(recipeIds.length)})`,
+    [...recipeIds],
+  );
+  return new Map(
+    rows.map((r) => [
+      r.id,
+      (JSON.parse(r.ingredients) as IngredientTuple[]).map((t) => t[7]).filter((x): x is number => x != null),
+    ]),
   );
 }
 

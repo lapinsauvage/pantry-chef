@@ -1,6 +1,6 @@
 /** Shared header configuration for the root stack and the stack inside each tab. */
 import { type NativeStackNavigationOptions, router, Stack } from 'expo-router';
-import { Pressable } from 'react-native';
+import { Pressable, Text } from 'react-native';
 
 import { useI18n } from '@/i18n';
 import { type Colors, useColors } from '@/theme';
@@ -30,6 +30,20 @@ export function SettingsButton() {
       hitSlop={10}
       style={({ pressed }) => ({ padding: 6, opacity: pressed ? 0.5 : 1 })}>
       <Icon name="settings" size={24} color={colors.primary} />
+    </Pressable>
+  );
+}
+
+/** Text button for modal headers ("Done"). */
+export function HeaderTextButton({ title, onPress }: { title: string; onPress: () => void }) {
+  const colors = useColors();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      hitSlop={10}
+      style={({ pressed }) => ({ paddingHorizontal: 6, paddingVertical: 4, opacity: pressed ? 0.5 : 1 })}>
+      <Text style={{ color: colors.primary, fontSize: 17, fontWeight: '600' }}>{title}</Text>
     </Pressable>
   );
 }

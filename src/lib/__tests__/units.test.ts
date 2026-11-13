@@ -67,6 +67,34 @@ test('oven temperatures and pan sizes in steps', () => {
   assert.equal(metricizeText('Preheat oven to 350°F.', 'us'), 'Preheat oven to 350°F.');
 });
 
+test('temperatures already in Celsius are left alone', () => {
+  assert.equal(metricizeText('Preheat oven to 180°C.'), 'Preheat oven to 180°C.');
+  assert.equal(metricizeText('Bake in slow oven for 20 minutes at 160°C.'), 'Bake in slow oven for 20 minutes at 160°C.');
+  assert.equal(metricizeText('Heat to 200 degrees C, then 180º C.'), 'Heat to 200 degrees C, then 180º C.');
+  assert.equal(metricizeText('Gas mark 6 (400F) or 200°C'), 'Gas mark 6 (205°C) or 200°C');
+  assert.equal(metricizeText('Preheat oven to 180 degrees celcius.'), 'Preheat oven to 180 degrees celcius.');
+  // Celsius given first: keep it, drop the Fahrenheit
+  assert.equal(metricizeText('Set the oven to 190°C/375°F/Gas 5.'), 'Set the oven to 190°C/Gas 5.');
+  assert.equal(metricizeText('Pre-heat oven to 200°C or 400°F.'), 'Pre-heat oven to 200°C.');
+  assert.equal(
+    metricizeText('Bake at 200°C/400°F for 10 minutes then reduce to 190°C/375°F.'),
+    'Bake at 200°C for 10 minutes then reduce to 190°C.',
+  );
+  assert.equal(metricizeText('Bake at 325-350°F.'), 'Bake at 165–175°C.');
+});
+
+test('Celsius already given after the Fahrenheit value is not converted again', () => {
+  assert.equal(metricizeText('Preheat oven to 350º / 180º.'), 'Preheat oven to 175°C.');
+  assert.equal(metricizeText('Bake at 425F/220C for 20 min.'), 'Bake at 220°C for 20 min.');
+  assert.equal(metricizeText('Heat to 400°F/200°C.'), 'Heat to 205°C.');
+  assert.equal(metricizeText('Oven at 350F or 180C.'), 'Oven at 175°C.');
+  assert.equal(metricizeText('Set to 275ºF/140ºC, then wait.'), 'Set to 135°C, then wait.');
+  assert.equal(metricizeText('Bake at 350 degrees F or 180°C'), 'Bake at 175°C');
+  assert.equal(metricizeText('Preheat oven to 350 degrees F (175 degrees C).'), 'Preheat oven to 175°C.');
+  // a second Fahrenheit option is kept and converted
+  assert.equal(metricizeText('Bake at 350°F or 400°F.'), 'Bake at 175°C or 205°C.');
+});
+
 test('scale factor', () => {
   assert.equal(scaleFactor(4, 6), 1.5);
   assert.equal(scaleFactor(null, 6), 1);

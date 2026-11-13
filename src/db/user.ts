@@ -96,6 +96,91 @@ export function removeBasic(id: number): void {
 }
 
 // ---------------------------------------------------------------------------
+// Pantry ("what's in my fridge", picked on the Cook tab; persists between launches)
+
+export function getPantry(): UserIngredient[] {
+  return userDb().getAllSync<UserIngredient>('SELECT ingredient_id AS id, name FROM pantry ORDER BY added_at, name');
+}
+
+export function addPantry(item: UserIngredient): void {
+  userDb().runSync('INSERT OR IGNORE INTO pantry (ingredient_id, name, added_at) VALUES (?, ?, ?)', [
+    item.id,
+    item.name,
+    Date.now(),
+  ]);
+}
+
+export function removePantry(id: number): void {
+  userDb().runSync('DELETE FROM pantry WHERE ingredient_id = ?', [id]);
+}
+
+export function clearPantry(): void {
+  userDb().runSync('DELETE FROM pantry');
+}
+
+// ---------------------------------------------------------------------------
+// Favourites and recently viewed
+
+export function getFavoriteIds(): number[] {
+  return userDb()
+    .getAllSync<{ recipe_id: number }>('SELECT recipe_id FROM favorites ORDER BY added_at DESC')
+    .map((r) => r.recipe_id);
+}
+
+export function setFavorite(recipeId: number, favorite: boolean): void {
+  if (favorite) {
+    userDb().runSync('INSERT OR IGNORE INTO favorites (recipe_id, added_at) VALUES (?, ?)', [recipeId, Date.now()]);
+  } else {
+    userDb().runSync('DELETE FROM favorites WHERE recipe_id = ?', [recipeId]);
+  }
+}
+
+export const HISTORY_SIZE = 50;
+
+/** Remember that a recipe was opened; keeps the last HISTORY_SIZE. */
+export function recordView(recipeId: number): void {
+  const d = userDb();
+  d.withTransactionSync(() => {
+    d.runSync('INSERT OR REPLACE INTO history (recipe_id, viewed_at) VALUES (?, ?)', [recipeId, Date.now()]);
+    d.runSync(
+      'DELETE FROM history WHERE recipe_id NOT IN (SELECT recipe_id FROM history ORDER BY viewed_at DESC LIMIT ?)',
+      [HISTORY_SIZE],
+    );
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Shopping list
+
+export interface NewShoppingItem {
+  text: string;
+  ingredientId?: number | null;
+  recipeId?: number | null;
+}
+
+/** Add items, skipping ingredients already on the list (unchecked). Returns how many were added. */
+export function addShoppingItems(items: readonly NewShoppingItem[]): number {
+  const d = userDb();
+  let added = 0;
+  d.withTransactionSync(() => {
+    for (const item of items) {
+      if (item.ingredientId != null) {
+        const dup = d.getFirstSync('SELECT 1 FROM shopping_items WHERE ingredient_id = ? AND checked = 0', [item.ingredientId]);
+        if (dup) continue;
+      }
+      d.runSync('INSERT INTO shopping_items (text, ingredient_id, recipe_id, checked, created_at) VALUES (?, ?, ?, 0, ?)', [
+        item.text,
+        item.ingredientId ?? null,
+        item.recipeId ?? null,
+        Date.now(),
+      ]);
+      added++;
+    }
+  });
+  return added;
+}
+
+// ---------------------------------------------------------------------------
 // Maintenance
 
 /**

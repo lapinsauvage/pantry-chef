@@ -213,8 +213,14 @@ export function unitLabel(unit: string, n: number): string {
 // ---------------------------------------------------------------------------
 // Temperatures and pan sizes inside instruction text
 
-const F_TEMP = /(\d{3})(?:\s*(?:-|–|to)\s*(\d{3}))?\s*(?:°|º|˚|degrees?|deg\.?)(?:\s*F(?:ahrenheit)?\b)?|(\d{3})\s*°?\s*F\b/gi;
-const EXISTING_C = /^\s*\(\s*(?:about\s*)?\d{2,3}\s*°?\s*C(?:elsius)?\s*\)/i;
+/** "350°F", "350 degrees", "325-350°" (but not "180°C" / "180 degrees C", already Celsius). */
+const F_TEMP =
+  /(\d{3})(?:\s*(?:-|–|to)\s*(\d{3}))?(?!\s*(?:°|º|˚|degrees?|deg\.?)?\s*C(?:el[cs]ius)?\b)\s*(?:°|º|˚|degrees?|deg\.?)(?:\s*F(?:ahrenheit)?\b)?|(\d{3})\s*°?\s*F\b/gi;
+/** A Celsius value the author already gave right after the °F one: "(180C)", "/ 180º", "or 180°C". */
+const EXISTING_C =
+  /^\s*(?:\(\s*(?:about\s*)?(\d{2,3})\s*(?:°|º|˚|degrees?|deg\.?)?\s*C(?:el[cs]ius)?\s*\)|(?:\/|or\b)\s*(\d{2,3})\s*(?:°|º|˚|degrees?|deg\.?)?\s*(?:C(?:el[cs]ius)?\b)?)/i;
+/** Celsius value right before a °F one: "190°C/", "200°C or ". */
+const PRECEDING_C = /(\d{2,3})\s*(?:°|º|˚|degrees?|deg\.?)?\s*C(?:el[cs]ius)?(\s*(?:\/|\bor\b)\s*)$/i;
 const PAN = /(\d+(?:\.\d+)?)\s*(?:x|×|by)\s*(\d+(?:\.\d+)?)(?:\s*(?:x|×|by)\s*(\d+(?:\.\d+)?))?(?:\s*|-)inch(?:es)?\b|(\d+(?:\.\d+)?)(?:\s*|-)inch(?:es)?\b|(\d+(?:\.\d+)?)"/gi;
 
 export function fToC(f: number): number {
@@ -231,12 +237,24 @@ export function metricizeText(text: string, system: UnitSystem = 'metric'): stri
     const a = Number(m[1] ?? m[3]);
     const b = m[2] ? Number(m[2]) : null;
     if (a < 150 || a > 575) continue; // not an oven temperature in °F
-    out += text.slice(last, m.index);
+    const before = text.slice(last, m.index);
+    const given = before.match(PRECEDING_C);
+    if (given && Math.abs(Number(given[1]) - fToC(b ?? a)) <= 25) {
+      // "190°C/375°F": the author already gave Celsius first — keep it, drop the °F part.
+      out += before.slice(0, before.length - given[2].length);
+      last = m.index + m[0].length;
+      continue;
+    }
+    out += before;
     out += b ? `${fToC(a)}–${fToC(b)}°C` : `${fToC(a)}°C`;
     last = m.index + m[0].length;
     const rest = text.slice(last);
     const dup = rest.match(EXISTING_C);
-    if (dup) last += dup[0].length;
+    // Drop it (we already print °C) when it is plausibly the same temperature, not a °F alternative.
+    if (dup && Math.abs(Number(dup[1] ?? dup[2]) - fToC(b ?? a)) <= 25) {
+      last += dup[0].length;
+      F_TEMP.lastIndex = last;
+    }
   }
   out += text.slice(last);
   return out.replace(PAN, (whole, w, h, d, single, quote) => {

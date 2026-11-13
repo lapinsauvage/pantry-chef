@@ -226,6 +226,59 @@ export function Chip({
   );
 }
 
+/** Non-interactive label pill (appliances, diet, chips on the recipe screen). */
+export function Tag({ label }: { label: string }) {
+  const colors = useColors();
+  return (
+    <View style={[styles.tag, { backgroundColor: colors.surfaceAlt }]}>
+      <AppText variant="caption">{label}</AppText>
+    </View>
+  );
+}
+
+/** − value + with large touch targets; the value is announced when it changes. */
+export function Stepper({
+  label,
+  onDecrement,
+  onIncrement,
+  decrementLabel,
+  incrementLabel,
+  canDecrement = true,
+}: {
+  label: string;
+  onDecrement: () => void;
+  onIncrement: () => void;
+  decrementLabel: string;
+  incrementLabel: string;
+  canDecrement?: boolean;
+}) {
+  const colors = useColors();
+  const button = (icon: IconName, a11y: string, onPress: () => void, disabled = false) => (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={a11y}
+      accessibilityState={{ disabled }}
+      disabled={disabled}
+      onPress={onPress}
+      hitSlop={4}
+      style={({ pressed }) => [
+        styles.stepperButton,
+        { backgroundColor: colors.primarySoft, opacity: disabled ? 0.4 : pressed ? 0.6 : 1 },
+      ]}>
+      <Icon name={icon} size={20} color={colors.onPrimarySoft} />
+    </Pressable>
+  );
+  return (
+    <View style={styles.stepper}>
+      {button('minus', decrementLabel, onDecrement, !canDecrement)}
+      <AppText variant="label" style={styles.stepperLabel} accessibilityLiveRegion="polite">
+        {label}
+      </AppText>
+      {button('add', incrementLabel, onIncrement)}
+    </View>
+  );
+}
+
 export function ChipGroup({ children }: { children: ReactNode }) {
   return <View style={styles.chipGroup}>{children}</View>;
 }
@@ -271,4 +324,8 @@ const styles = StyleSheet.create({
   },
   chipLabel: { flexShrink: 1 },
   chipGroup: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
+  tag: { borderRadius: radius.pill, paddingHorizontal: space.md, paddingVertical: space.xs },
+  stepper: { flexDirection: 'row', alignItems: 'center', gap: space.md },
+  stepperButton: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  stepperLabel: { minWidth: 110, textAlign: 'center' },
 });

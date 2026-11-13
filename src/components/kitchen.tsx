@@ -7,7 +7,8 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
 
 import { useRecipeDb } from '@/db/recipe-db';
-import { type Ingredient, ingredientsByIds, ingredientsByName, searchIngredients } from '@/db/recipes';
+import { type Ingredient, ingredientsByName, searchIngredients } from '@/db/recipes';
+import { useIngredientNames } from '@/hooks/use-ingredient-names';
 import { ingredientName, useI18n } from '@/i18n';
 import { AVOID, BASIC_SUGGESTIONS, DEFAULT_BASICS, DIETS, EQUIPMENT, type Flag, type Lang } from '@/lib/constants';
 import { hasBit, type LanguagePref, toggleBit } from '@/lib/settings';
@@ -100,7 +101,7 @@ export function UnitsPicker() {
   );
 }
 
-function FlagChecklist({
+export function FlagChecklist({
   title,
   hint,
   flags,
@@ -172,20 +173,9 @@ export function BasicsEditor() {
   const { t, lang } = useI18n();
   const colors = useColors();
   const basics = useBasics();
-  const [details, setDetails] = useState<ReadonlyMap<number, Ingredient>>(new Map());
   const [suggestions, setSuggestions] = useState<Ingredient[]>([]);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<{ query: string; rows: Ingredient[] } | null>(null);
-
-  useEffect(() => {
-    let live = true;
-    ingredientsByIds(db, basics.map((b) => b.id)).then((rows) => {
-      if (live) setDetails(new Map(rows.map((r) => [r.id, r])));
-    });
-    return () => {
-      live = false;
-    };
-  }, [db, basics]);
 
   useEffect(() => {
     ingredientsByName(db, SUGGESTED_BASICS).then(setSuggestions);
@@ -207,7 +197,7 @@ export function BasicsEditor() {
   }, [db, text]);
 
   const owned = new Set(basics.map((b) => b.id));
-  const nameOf = (b: { id: number; name: string }) => ingredientName(details.get(b.id) ?? { ...b, name_fr: null }, lang);
+  const nameOf = useIngredientNames(basics);
   const sortedBasics = [...basics].sort((a, b) => nameOf(a).localeCompare(nameOf(b)));
   const searchRows = text && results?.query === text ? results.rows.filter((r) => !owned.has(r.id)) : null;
   const add = (i: Ingredient) => addBasicIngredient({ id: i.id, name: i.name });
